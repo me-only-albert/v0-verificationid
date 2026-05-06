@@ -1,4 +1,4 @@
-import { Connection, ConnectionConfig, Request as TediousRequest } from "tedious"
+import { Connection, Request as TediousRequest, TYPES } from "tedious"
 
 interface QueryResult {
   recordset: Record<string, unknown>[]
@@ -7,6 +7,15 @@ interface QueryResult {
 interface RequestWrapper {
   input(name: string, type: any, value: unknown): RequestWrapper
   query(sql: string): Promise<QueryResult>
+}
+
+// SQL type mappings untuk kompatibilitas dengan mssql API
+export const sql = {
+  NVarChar: (len?: number) => ({ type: TYPES.NVarChar, length: len }),
+  Char: (len?: number) => ({ type: TYPES.Char, length: len }),
+  Int: () => ({ type: TYPES.Int }),
+  DateTime: () => ({ type: TYPES.DateTime }),
+  Bit: () => ({ type: TYPES.Bit }),
 }
 
 /**
@@ -59,19 +68,20 @@ class TediousPoolWrapper {
     return this
   }
 
-  private buildConnectionConfig(): ConnectionConfig {
-    const server = process.env.DB_SERVER || "localhost"
-    const port = parseInt(process.env.DB_PORT || "1433", 10)
-    const user = process.env.DB_USER || "sa"
-    const password = process.env.DB_PASSWORD || ""
-    const database = process.env.DB_NAME || "master"
-    const encrypt = process.env.DB_ENCRYPT === "true"
-    const trustServerCertificate = process.env.DB_TRUST_SERVER_CERTIFICATE === "true"
+  private buildConnectionConfig() {
+    const server = process.env.SQL_SERVER_HOST || "localhost"
+    const port = parseInt(process.env.SQL_SERVER_PORT || "1433", 10)
+    const user = process.env.SQL_SERVER_USER || "sa"
+    const password = process.env.SQL_SERVER_PASSWORD || ""
+    const database = process.env.SQL_SERVER_DATABASE || "master"
+    const instanceName = process.env.SQL_SERVER_INSTANCE || ""
+    const encrypt = process.env.SQL_SERVER_ENCRYPT === "true"
+    const trustServerCertificate = process.env.SQL_SERVER_TRUST_CERT === "true"
 
     return {
       server,
       authentication: {
-        type: "default",
+        type: "default" as const,
         options: {
           userName: user,
           password,
@@ -80,6 +90,7 @@ class TediousPoolWrapper {
       options: {
         port,
         database,
+        instanceName: instanceName || undefined,
         encrypt,
         trustServerCertificate,
         // Kompatibel dengan SQL Server 2012
@@ -123,12 +134,14 @@ class TediousPoolWrapper {
 
           // Tambah input parameters
           inputs.forEach((value, name) => {
-            const type = types.get(name)
-            request.addParameter(name, type, value)
+            const typeObj = types.get(name)
+            const type = typeObj?.type || TYPES.NVarChar
+            const length = typeObj?.length || undefined
+            request.addParameter(name, type, value, { length })
           })
 
           // Event handler untuk setiap row
-          request.on("row", (columns) => {
+          request.on("row", (columns: any[]) => {
             const row: Record<string, unknown> = {}
             columns.forEach((col) => {
               row[col.metadata.colName] = col.value
@@ -160,7 +173,7 @@ class TediousPoolWrapper {
 
 let pool: TediousPoolWrapper | null = null
 
-export async function getPoolTedious(): Promise<TediousPoolWrapper> {
+export async function getPool(): Promise<TediousPoolWrapper> {
   if (pool && pool.connected) {
     console.log("[v0-tedious] Reusing existing connection pool")
     return pool
@@ -172,7 +185,7 @@ export async function getPoolTedious(): Promise<TediousPoolWrapper> {
   return pool
 }
 
-export function closePoolTedious(): Promise<void> {
+export async function closePool(): Promise<void> {
   if (pool) {
     return pool.close()
   }
