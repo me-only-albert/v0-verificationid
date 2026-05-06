@@ -1,4 +1,4 @@
-import { ShieldCheck, Lock, Zap } from "lucide-react"
+import { ShieldCheck, Lock, Zap, Gift, Sparkles } from "lucide-react"
 import { VerifyForm } from "@/components/verify-form"
 
 export default function Page() {
@@ -46,22 +46,36 @@ export default function Page() {
 
         {/* Hero */}
         <section className="mt-10 sm:mt-12 animate-pop-in">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-secondary-foreground">
-            <Zap className="size-3" aria-hidden="true" />
-            Cepat &amp; Aman
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-foreground">
+            <Gift className="size-3" aria-hidden="true" />
+            Klaim Promo Spesial
           </span>
           <h1 className="mt-4 text-[28px] sm:text-[32px] font-bold leading-[1.15] tracking-tight text-foreground text-balance">
-            Verifikasi nomor HP Anda dalam{" "}
+            Verifikasi nomor HP untuk{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-primary">satu langkah</span>
+              <span className="relative z-10 text-primary">klaim promo</span>
               <span className="absolute inset-x-0 bottom-1 z-0 h-2.5 bg-accent/40" aria-hidden="true" />
-            </span>
-            .
+            </span>{" "}
+            Anda.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground text-pretty">
             Masukkan nomor handphone Anda di bawah ini untuk mendapatkan{" "}
-            <span className="font-semibold text-foreground">kode unik 4 digit</span> Anda.
+            <span className="font-semibold text-foreground">kode unik 4 digit</span> sebagai bukti
+            klaim promo Anda.
           </p>
+
+          {/* Promo info card */}
+          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/15 via-accent/5 to-transparent p-3.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-sm">
+              <Sparkles className="size-4" aria-hidden="true" />
+            </div>
+            <div className="flex-1 leading-snug">
+              <p className="text-[13px] font-bold text-foreground">Cara klaim promo Anda</p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground text-pretty">
+                Tunjukkan kode 4 digit yang muncul ke kasir kami untuk menikmati promo spesial.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Form card */}

@@ -56,10 +56,10 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
           </div>
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground text-balance">
-          Verifikasi Berhasil
+          Promo Anda Siap Diklaim!
         </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          Berikut kode unik 4 digit untuk nomor{" "}
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground text-pretty">
+          Tunjukkan kode 4 digit di bawah ini ke kasir untuk klaim promo nomor{" "}
           <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span>.
         </p>
       </div>
@@ -73,7 +73,7 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
 
         <div className="relative flex flex-col items-center">
           <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-            Kode Verifikasi Anda
+            Kode Klaim Promo Anda
           </span>
 
           <div
