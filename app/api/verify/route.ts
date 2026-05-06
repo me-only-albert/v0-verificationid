@@ -6,9 +6,10 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 // Konfigurasi nama tabel/kolom (bisa di-override via env)
-const CUSTOMER_TABLE = process.env.CUSTOMER_TABLE || "customers"
-const CUSTOMER_PHONE_COLUMN = process.env.CUSTOMER_PHONE_COLUMN || "phone"
-const VERIFICATION_TABLE = process.env.VERIFICATION_TABLE || "verification_codes"
+const CUSTOMER_TABLE = process.env.CUSTOMER_TABLE || "t5_Customer"
+const CUSTOMER_PHONE_COLUMN = process.env.CUSTOMER_PHONE_COLUMN || "MobilePhone"
+const VERIFICATION_TABLE = process.env.VERIFICATION_TABLE || "t5_Customer_verification_codes"
+const VERIFICATION_PHONE_COLUMN = process.env.VERIFICATION_PHONE_COLUMN || "MobilePhone"
 
 const CODE_TTL_MINUTES = 10
 const MAX_GENERATE_ATTEMPTS = 100
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
           .input("code", sql.Char(4), candidate)
           .input("ttl", sql.Int, CODE_TTL_MINUTES)
           .query(
-            `INSERT INTO ${verifTable} (phone, code, expires_at)
+            `INSERT INTO ${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
              VALUES (@phone, @code, DATEADD(MINUTE, @ttl, GETDATE()))`,
           )
         generatedCode = candidate

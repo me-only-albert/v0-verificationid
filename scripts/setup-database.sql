@@ -6,32 +6,31 @@
 --  SQL Server Management Studio (SSMS) atau sqlcmd.
 -- ============================================================
 
--- 1. Tabel customers
---    Berisi data customer Anda. Pastikan kolom 'phone' sudah dinormalisasi
+-- 1. Tabel t5_Customer
+--    Berisi data customer Anda. Pastikan kolom 'MobilePhone' sudah dinormalisasi
 --    ke format 62XXXXXXXXXX (Indonesia) tanpa spasi/karakter lain.
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'customers')
+--    CATATAN: Asumsikan tabel sudah ada. Script ini hanya membuat index jika belum ada.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_t5_Customer_MobilePhone')
 BEGIN
-    CREATE TABLE customers (
-        id          INT IDENTITY(1,1) PRIMARY KEY,
-        phone       NVARCHAR(20)  NOT NULL,
-        name        NVARCHAR(100) NULL,
-        created_at  DATETIME      NOT NULL DEFAULT GETDATE()
-    );
-
-    CREATE UNIQUE INDEX UX_customers_phone ON customers(phone);
+    CREATE UNIQUE INDEX UX_t5_Customer_MobilePhone ON t5_Customer(MobilePhone);
+    PRINT 'Index UX_t5_Customer_MobilePhone berhasil dibuat.';
+END
+ELSE
+BEGIN
+    PRINT 'Index UX_t5_Customer_MobilePhone sudah ada.';
 END
 GO
 
--- 2. Tabel verification_codes
+-- 2. Tabel t5_Customer_verification_codes
 --    Menyimpan kode 4 digit yang di-generate. Dilengkapi UNIQUE FILTERED INDEX
 --    pada kolom 'code' (hanya untuk record dengan used = 0) sehingga
 --    tidak mungkin ada dua kode aktif yang sama meskipun di-generate
 --    secara bersamaan oleh banyak request (concurrency safe).
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'verification_codes')
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 't5_Customer_verification_codes')
 BEGIN
-    CREATE TABLE verification_codes (
+    CREATE TABLE t5_Customer_verification_codes (
         id          INT IDENTITY(1,1) PRIMARY KEY,
-        phone       NVARCHAR(20)  NOT NULL,
+        MobilePhone NVARCHAR(20)  NOT NULL,
         code        CHAR(4)       NOT NULL,
         created_at  DATETIME      NOT NULL DEFAULT GETDATE(),
         expires_at  DATETIME      NOT NULL,
@@ -43,23 +42,20 @@ BEGIN
     -- yang sama akan ditolak oleh database (error 2601/2627), lalu kode kita
     -- akan di-retry dengan random baru di sisi aplikasi.
     CREATE UNIQUE INDEX UX_verification_active_code
-        ON verification_codes(code)
+        ON t5_Customer_verification_codes(code)
         WHERE used = 0;
 
-    CREATE INDEX IX_verification_phone     ON verification_codes(phone);
-    CREATE INDEX IX_verification_expires   ON verification_codes(expires_at);
+    CREATE INDEX IX_verification_phone     ON t5_Customer_verification_codes(MobilePhone);
+    CREATE INDEX IX_verification_expires   ON t5_Customer_verification_codes(expires_at);
+    
+    PRINT 'Tabel t5_Customer_verification_codes berhasil dibuat.';
 END
-GO
-
--- 3. (Opsional) Contoh data customer untuk testing.
---    Hapus / ganti dengan data customer Anda yang sebenarnya.
-IF NOT EXISTS (SELECT 1 FROM customers WHERE phone = '628123456789')
+ELSE
 BEGIN
-    INSERT INTO customers (phone, name) VALUES
-        ('628123456789', 'Customer Demo 1'),
-        ('628987654321', 'Customer Demo 2');
+    PRINT 'Tabel t5_Customer_verification_codes sudah ada.';
 END
 GO
 
 PRINT 'Setup database selesai.';
 GO
+
