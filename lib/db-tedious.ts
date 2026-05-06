@@ -49,7 +49,13 @@ class TediousPoolWrapper {
       })
 
       conn.on("error", (err) => {
-        console.log("[v0-tedious] Connection error:", err.message)
+        console.log("[v0-tedious] Connection error event:", err.message)
+        this.connection = null
+        reject(err)
+      })
+
+      conn.on("end", () => {
+        console.log("[v0-tedious] Connection ended")
         this.connection = null
       })
 
@@ -60,6 +66,8 @@ class TediousPoolWrapper {
       await this.connecting
     } catch (err) {
       this.connecting = null
+      const errMsg = err instanceof Error ? err.message : String(err)
+      console.log("[v0-tedious] Connection failed:", errMsg)
       throw err
     } finally {
       this.connecting = null
@@ -111,7 +119,10 @@ class TediousPoolWrapper {
 
   request(): RequestWrapper {
     if (!this.connection || this.connection.state?.name !== "LoggedIn") {
-      throw new Error("Database connection not established")
+      const state = this.connection?.state?.name || "null"
+      const err = `Database connection not established (state: ${state})`
+      console.log("[v0-tedious]", err)
+      throw new Error(err)
     }
 
     const conn = this.connection
