@@ -42,11 +42,11 @@ export function NotFoundModal({ open, phone, onOpenChange, onRetry }: NotFoundMo
                 {displayPhone ? (
                   <>
                     Nomor{" "}
-                    <span className="font-semibold text-foreground">{displayPhone}</span> tidak
-                    kami temukan di database.
+                    <span className="font-semibold text-foreground">{displayPhone}</span> belum
+                    terdaftar pada sistem kami.
                   </>
                 ) : (
-                  "Nomor yang Anda masukkan tidak ditemukan."
+                  "Nomor yang Anda masukkan belum terdaftar."
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -62,7 +62,7 @@ export function NotFoundModal({ open, phone, onOpenChange, onRetry }: NotFoundMo
                 <p className="font-semibold text-foreground">Yang bisa Anda lakukan:</p>
                 <ul className="list-disc space-y-0.5 pl-4">
                   <li>Pastikan nomor tidak ada salah ketik</li>
-                  <li>Cek kembali apakah nomor sudah didaftarkan</li>
+                  <li>Coba gunakan format tanpa angka 0 di depan</li>
                   <li>Hubungi admin jika nomor seharusnya terdaftar</li>
                 </ul>
               </div>

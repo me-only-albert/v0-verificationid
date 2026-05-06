@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Verifikasi Nomor HP",
-  description: "Masukkan nomor HP Anda untuk mendapatkan kode verifikasi 4 digit.",
+  title: "Verifikasi Nomor HP — by Dainty Pos",
+  description: "Masukkan nomor HP Anda untuk mendapatkan kode verifikasi 4 digit. by Dainty Pos.",
   generator: "v0.app",
 }
 

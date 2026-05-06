@@ -59,8 +59,8 @@ export default function Page() {
             .
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground text-pretty">
-            Masukkan nomor handphone Anda di bawah ini. Kami akan mencocokkan dengan database dan memberikan{" "}
-            <span className="font-semibold text-foreground">kode unik 4 digit</span> untuk Anda.
+            Masukkan nomor handphone Anda di bawah ini untuk mendapatkan{" "}
+            <span className="font-semibold text-foreground">kode unik 4 digit</span> Anda.
           </p>
         </section>
 
@@ -81,8 +81,13 @@ export default function Page() {
           <TrustItem icon={Zap} label="Real-time" />
         </section>
 
-        <footer className="mt-auto pt-8 text-center text-[11px] text-muted-foreground">
-          &copy; {new Date().getFullYear()} VerifyID &middot; Sistem verifikasi internal
+        <footer className="mt-auto flex flex-col items-center gap-1 pt-8 text-center">
+          <p className="text-[12px] font-semibold text-foreground">
+            by <span className="text-primary">Dainty Pos</span>
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            &copy; {new Date().getFullYear()} VerifyID &middot; Sistem verifikasi internal
+          </p>
         </footer>
       </div>
     </main>

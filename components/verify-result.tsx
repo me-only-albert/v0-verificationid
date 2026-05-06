@@ -59,9 +59,8 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
           Verifikasi Berhasil
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          Nomor{" "}
-          <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span>{" "}
-          terdaftar di sistem kami.
+          Berikut kode unik 4 digit untuk nomor{" "}
+          <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span>.
         </p>
       </div>
 
