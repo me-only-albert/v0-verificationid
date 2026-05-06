@@ -50,6 +50,7 @@ class TediousPoolWrapper {
 
       conn.on("error", (err) => {
         console.log("[v0-tedious] Connection error event:", err.message)
+        console.log("[v0-tedious] Error code:", (err as any).code)
         this.connection = null
         reject(err)
       })
@@ -59,6 +60,7 @@ class TediousPoolWrapper {
         this.connection = null
       })
 
+      console.log("[v0-tedious] Calling conn.connect()...")
       conn.connect()
     })
 
@@ -84,6 +86,15 @@ class TediousPoolWrapper {
     const instanceName = process.env.SQL_SERVER_INSTANCE || ""
     const encrypt = process.env.SQL_SERVER_ENCRYPT === "true"
     const trustServerCertificate = process.env.SQL_SERVER_TRUST_CERT === "true"
+
+    console.log("[v0-tedious] Config:", {
+      server,
+      user,
+      database,
+      instanceName: instanceName || "(empty)",
+      encrypt,
+      trustServerCertificate,
+    })
 
     // Jika instanceName ada, gunakan instanceName (jangan port)
     // Jika tidak ada instanceName, gunakan port

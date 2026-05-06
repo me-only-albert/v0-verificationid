@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { getPool, sql } from "@/lib/db-tedious"
 import { isValidPhone, normalizePhone } from "@/lib/phone"
-import { DayButton } from "react-day-picker"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
