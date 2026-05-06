@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getPool, sql } from "@/lib/db-tedious"
 import { isValidPhone, normalizePhone } from "@/lib/phone"
+import { DayButton } from "react-day-picker"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
       customerResult = await pool
         .request()
         .input("phone", sql.NVarChar(20), phone)
-        .query(`SELECT TOP 1 1 AS found FROM ${customerTable} WHERE ${phoneCol} = @phone`)
+        .query(`SELECT TOP 1 1 AS found FROM dbo.${customerTable} WHERE ${phoneCol} = @phone`)
       console.log("[v0] Customer check completed, found:", customerResult.recordset.length > 0)
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err)
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
     // 2. Cleanup: tandai kode yang sudah expired sebagai used,
     //    sehingga "slot" kodenya bisa dipakai ulang.
     try {
-      await pool.request().query(`UPDATE ${verifTable} SET used = 1 WHERE used = 0 AND expires_at < GETDATE()`)
+      await pool.request().query(`UPDATE dbo.${verifTable} SET used = 1 WHERE used = 0 AND expires_at < GETDATE()`)
       console.log("[v0] Expired codes cleaned up")
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err)
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
           .input("code", sql.Char(4), candidate)
           .input("ttl", sql.Int, CODE_TTL_MINUTES)
           .query(
-            `INSERT INTO ${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
+            `INSERT INTO dbo.${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
              VALUES (@phone, @code, DATEADD(MINUTE, @ttl, GETDATE()))`,
           )
         generatedCode = candidate
