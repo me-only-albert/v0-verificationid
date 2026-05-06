@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Phone, Loader2, ShieldCheck, ArrowRight } from "lucide-react"
+import { Loader2, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NotFoundModal } from "@/components/not-found-modal"
 import { VerifyResult } from "@/components/verify-result"
@@ -18,7 +18,6 @@ export function VerifyForm() {
   const [result, setResult] = useState<{ code: string; phone: string; expiresInMinutes: number } | null>(null)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Hanya digit + maks panjang wajar
     const value = e.target.value.replace(/[^\d]/g, "").slice(0, 15)
     setPhone(value)
     if (error) setError(null)
@@ -73,7 +72,12 @@ export function VerifyForm() {
 
   if (result) {
     return (
-      <VerifyResult code={result.code} phone={result.phone} expiresInMinutes={result.expiresInMinutes} onReset={reset} />
+      <VerifyResult
+        code={result.code}
+        phone={result.phone}
+        expiresInMinutes={result.expiresInMinutes}
+        onReset={reset}
+      />
     )
   }
 
@@ -81,14 +85,23 @@ export function VerifyForm() {
     <>
       <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-2">
-          <label htmlFor="phone" className="text-sm font-semibold text-foreground">
-            Nomor Handphone
+          <label htmlFor="phone" className="flex items-center justify-between text-[13px] font-semibold text-foreground">
+            <span>Nomor Handphone</span>
+            <span className="text-[11px] font-medium text-muted-foreground">Wajib diisi</span>
           </label>
 
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center gap-2 pl-4 pr-3 border-r border-border text-muted-foreground">
-              <Phone className="size-4" aria-hidden="true" />
-              <span className="text-sm font-medium">+62</span>
+          <div
+            className={`group relative flex items-stretch overflow-hidden rounded-2xl border-2 bg-card transition-all ${
+              error
+                ? "border-destructive/50 bg-destructive/[0.02]"
+                : "border-border focus-within:border-primary focus-within:bg-primary/[0.015] focus-within:shadow-lg focus-within:shadow-primary/10"
+            }`}
+          >
+            <div className="flex items-center gap-2 border-r border-border bg-secondary/50 pl-4 pr-3.5">
+              <span className="text-base" aria-hidden="true">
+                🇮🇩
+              </span>
+              <span className="text-[15px] font-semibold text-foreground">+62</span>
             </div>
             <input
               id="phone"
@@ -96,23 +109,28 @@ export function VerifyForm() {
               type="tel"
               inputMode="numeric"
               autoComplete="tel"
-              placeholder="81234567890"
+              placeholder="812 3456 7890"
               value={phone}
               onChange={handleChange}
               disabled={pending}
               aria-invalid={Boolean(error)}
-              aria-describedby={error ? "phone-error" : undefined}
-              className="w-full h-14 rounded-xl bg-card border border-border pl-[5.5rem] pr-4 text-base font-medium tracking-wide outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+              aria-describedby={error ? "phone-error" : "phone-hint"}
+              className="h-14 flex-1 bg-transparent px-4 text-[17px] font-semibold tracking-wide text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/50 disabled:opacity-60"
             />
           </div>
 
           {error ? (
-            <p id="phone-error" className="text-sm text-destructive font-medium">
+            <p
+              id="phone-error"
+              className="flex items-start gap-1.5 text-[13px] font-medium text-destructive"
+            >
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
               {error}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Contoh: 081234567890. Kami akan mengecek nomor Anda di database kami.
+            <p id="phone-hint" className="text-[12px] leading-relaxed text-muted-foreground">
+              Contoh: <span className="font-medium text-foreground">081234567890</span> atau{" "}
+              <span className="font-medium text-foreground">81234567890</span>
             </p>
           )}
         </div>
@@ -120,27 +138,25 @@ export function VerifyForm() {
         <Button
           type="submit"
           disabled={pending || !phone.trim()}
-          className="h-14 rounded-xl text-base font-semibold gap-2 shadow-sm shadow-primary/25"
+          className="group relative h-14 overflow-hidden rounded-2xl text-[15px] font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 active:scale-[0.99]"
         >
-          {pending ? (
-            <>
-              <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-              Memeriksa...
-            </>
-          ) : (
-            <>
-              Verifikasi Sekarang
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </>
-          )}
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            {pending ? (
+              <>
+                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                Memeriksa nomor...
+              </>
+            ) : (
+              <>
+                Verifikasi Sekarang
+                <ArrowRight
+                  className="size-5 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </>
+            )}
+          </span>
         </Button>
-
-        <div className="flex items-start gap-3 rounded-xl bg-secondary/60 border border-border/60 p-3.5">
-          <ShieldCheck className="size-5 text-primary mt-0.5 shrink-0" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Data Anda aman. Nomor HP hanya digunakan untuk verifikasi dan tidak akan dibagikan ke pihak lain.
-          </p>
-        </div>
       </form>
 
       <NotFoundModal

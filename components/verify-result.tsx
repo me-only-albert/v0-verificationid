@@ -12,7 +12,6 @@ interface VerifyResultProps {
 }
 
 function formatPhoneForDisplay(phone: string) {
-  // 628123456789 -> +62 812-3456-789
   if (!phone.startsWith("62")) return phone
   const rest = phone.slice(2)
   const groups = rest.match(/^(\d{3,4})(\d{3,4})(\d+)$/)
@@ -23,6 +22,7 @@ function formatPhoneForDisplay(phone: string) {
 export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyResultProps) {
   const [copied, setCopied] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(expiresInMinutes * 60)
+  const totalSeconds = expiresInMinutes * 60
 
   useEffect(() => {
     if (secondsLeft <= 0) return
@@ -40,79 +40,115 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
     }
   }
 
-  const mm = Math.floor(secondsLeft / 60)
-    .toString()
-    .padStart(2, "0")
+  const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0")
   const ss = (secondsLeft % 60).toString().padStart(2, "0")
   const expired = secondsLeft <= 0
+  const progress = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100))
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col items-center text-center gap-2">
-        <div className="flex items-center justify-center size-14 rounded-full bg-primary/10 text-primary">
-          <CheckCircle2 className="size-7" aria-hidden="true" />
+      {/* Success header */}
+      <div className="flex flex-col items-center text-center">
+        <div className="relative">
+          <span className="absolute inset-0 animate-pulse-ring rounded-full bg-primary/30" aria-hidden="true" />
+          <div className="relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+            <CheckCircle2 className="size-8" aria-hidden="true" />
+          </div>
         </div>
-        <h2 className="text-xl font-bold text-foreground text-balance">Verifikasi Berhasil</h2>
-        <p className="text-sm text-muted-foreground text-pretty">
-          Nomor <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span> terdaftar. Berikut
-          kode verifikasi Anda:
+        <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground text-balance">
+          Verifikasi Berhasil
+        </h2>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+          Nomor{" "}
+          <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span>{" "}
+          terdaftar di sistem kami.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-gradient-to-b from-primary/5 to-card p-6 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Kode Verifikasi
-        </div>
-
+      {/* Code display */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-accent/[0.05] p-5">
         <div
-          className="flex items-center gap-2 sm:gap-3 font-mono"
-          role="text"
-          aria-label={`Kode verifikasi: ${code.split("").join(" ")}`}
-        >
-          {code.split("").map((digit, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-center size-14 sm:size-16 rounded-xl bg-card border-2 border-primary/30 text-2xl sm:text-3xl font-bold text-primary shadow-sm"
-            >
-              {digit}
+          aria-hidden="true"
+          className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/10 blur-2xl"
+        />
+
+        <div className="relative flex flex-col items-center">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+            Kode Verifikasi Anda
+          </span>
+
+          <div
+            className="mt-3 flex items-center gap-2 sm:gap-3"
+            role="text"
+            aria-label={`Kode verifikasi: ${code.split("").join(" ")}`}
+          >
+            {code.split("").map((digit, i) => (
+              <div
+                key={i}
+                className="flex size-14 items-center justify-center rounded-2xl border border-primary/15 bg-card font-mono text-3xl font-bold text-foreground shadow-sm sm:size-16 sm:text-[34px]"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <span className="animate-pop-in" style={{ animationDelay: `${i * 80}ms` }}>
+                  {digit}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Timer */}
+          <div className="mt-5 w-full">
+            <div className="flex items-center justify-between text-[11px] font-medium">
+              <span className={`flex items-center gap-1.5 ${expired ? "text-destructive" : "text-muted-foreground"}`}>
+                <Clock className="size-3.5" aria-hidden="true" />
+                {expired ? "Kode kedaluwarsa" : "Berlaku selama"}
+              </span>
+              {!expired && (
+                <span className="font-mono font-bold text-foreground tabular-nums">
+                  {mm}:{ss}
+                </span>
+              )}
             </div>
-          ))}
-        </div>
-
-        <div
-          className={`flex items-center gap-1.5 text-xs font-medium ${
-            expired ? "text-destructive" : "text-muted-foreground"
-          }`}
-        >
-          <Clock className="size-3.5" aria-hidden="true" />
-          {expired ? (
-            <span>Kode sudah kedaluwarsa</span>
-          ) : (
-            <span>
-              Berlaku {mm}:{ss}
-            </span>
-          )}
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-border/60">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                  expired ? "bg-destructive" : progress < 25 ? "bg-accent" : "bg-primary"
+                }`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Actions */}
       <div className="flex flex-col gap-2.5">
-        <Button onClick={copyCode} variant="secondary" className="h-12 rounded-xl text-sm font-semibold gap-2">
+        <Button
+          onClick={copyCode}
+          disabled={expired}
+          className={`h-12 rounded-2xl text-[14px] font-semibold transition-all ${
+            copied ? "bg-primary text-primary-foreground" : ""
+          }`}
+        >
           {copied ? (
             <>
               <Check className="size-4" aria-hidden="true" />
-              Tersalin
+              Kode tersalin
             </>
           ) : (
             <>
               <Copy className="size-4" aria-hidden="true" />
-              Salin Kode
+              Salin kode
             </>
           )}
         </Button>
 
-        <Button onClick={onReset} variant="ghost" className="h-12 rounded-xl text-sm font-medium gap-2">
+        <Button
+          onClick={onReset}
+          variant="ghost"
+          className="h-11 rounded-2xl text-[13px] font-medium text-muted-foreground hover:text-foreground"
+        >
           <RotateCcw className="size-4" aria-hidden="true" />
-          Verifikasi Nomor Lain
+          Verifikasi nomor lain
         </Button>
       </div>
     </div>

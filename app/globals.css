@@ -4,26 +4,26 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Brand: teal/emerald (trustworthy, fresh) + neutral cream + amber accent */
-  --background: oklch(0.985 0.006 95);
-  --foreground: oklch(0.22 0.02 200);
+  /* Brand: deep teal (trust + fintech) + warm neutrals + amber accent */
+  --background: oklch(0.98 0.005 200);
+  --foreground: oklch(0.2 0.025 210);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.02 200);
+  --card-foreground: oklch(0.2 0.025 210);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.02 200);
-  --primary: oklch(0.58 0.13 175);
+  --popover-foreground: oklch(0.2 0.025 210);
+  --primary: oklch(0.52 0.12 180);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 180);
-  --secondary-foreground: oklch(0.3 0.04 190);
-  --muted: oklch(0.96 0.005 180);
-  --muted-foreground: oklch(0.5 0.02 200);
-  --accent: oklch(0.85 0.13 85);
+  --secondary: oklch(0.96 0.012 195);
+  --secondary-foreground: oklch(0.3 0.04 195);
+  --muted: oklch(0.965 0.006 200);
+  --muted-foreground: oklch(0.5 0.02 210);
+  --accent: oklch(0.82 0.14 80);
   --accent-foreground: oklch(0.25 0.05 60);
-  --destructive: oklch(0.6 0.22 25);
+  --destructive: oklch(0.58 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.01 180);
-  --input: oklch(0.92 0.01 180);
-  --ring: oklch(0.58 0.13 175);
+  --border: oklch(0.92 0.008 200);
+  --input: oklch(0.94 0.008 200);
+  --ring: oklch(0.52 0.12 180);
   --chart-1: oklch(0.58 0.13 175);
   --chart-2: oklch(0.7 0.15 165);
   --chart-3: oklch(0.85 0.13 85);
@@ -122,5 +122,38 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Hilangkan spinner di input number */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  @keyframes float-slow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(10px, -10px) scale(1.05); }
+  }
+  @keyframes pulse-ring {
+    0% { transform: scale(0.95); opacity: 0.5; }
+    50% { transform: scale(1.05); opacity: 0.25; }
+    100% { transform: scale(0.95); opacity: 0.5; }
+  }
+  @keyframes pop-in {
+    0% { opacity: 0; transform: scale(0.85) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+  }
+  .animate-pulse-ring {
+    animation: pulse-ring 2.5s ease-in-out infinite;
+  }
+  .animate-pop-in {
+    animation: pop-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 }
