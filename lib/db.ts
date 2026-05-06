@@ -59,30 +59,41 @@ function buildConfig(): SqlConfig {
       enableArithAbort: true,
       ...(instanceName ? { instanceName } : {}),
     },
-    connectionTimeout: 15000,
-    requestTimeout: 15000,
+    connectionTimeout: 30000,  // 30 detik untuk koneksi awal
+    requestTimeout: 30000,     // 30 detik untuk setiap request
   }
 
   return config
 }
 
 export async function getPool(): Promise<ConnectionPool> {
-  if (pool && pool.connected) return pool
-  if (connecting) return connecting
+  if (pool && pool.connected) {
+    console.log("[v0] Reusing existing SQL Server pool")
+    return pool
+  }
+  if (connecting) {
+    console.log("[v0] Waiting for SQL Server connection in progress...")
+    return connecting
+  }
 
   const config = buildConfig()
+  console.log("[v0] Initiating new SQL Server connection to:", config.server, ":", config.port, "database:", config.database)
+  
   connecting = new sql.ConnectionPool(config)
     .connect()
     .then((p) => {
+      console.log("[v0] SQL Server pool connected successfully!")
       pool = p
       p.on("error", (err) => {
-        console.log("[v0] SQL Server pool error:", err?.message || err)
+        console.log("[v0] SQL Server pool error event:", err?.message || err)
         pool = null
       })
       return p
     })
     .catch((err) => {
       connecting = null
+      const errMsg = err instanceof Error ? err.message : String(err)
+      console.log("[v0] SQL Server pool connection FAILED:", errMsg)
       throw err
     })
 
