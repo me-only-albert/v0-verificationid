@@ -37,7 +37,7 @@ class TediousPoolWrapper {
     }
 
     const config = this.buildConnectionConfig()
-    console.log("[v0-tedious] Connecting to SQL Server:", config.server, ":", config.options?.port)
+    console.log("[v0-tedious] Connecting to SQL Server:", config.server)
 
     this.connecting = new Promise((resolve, reject) => {
       const conn = new Connection(config)
@@ -70,13 +70,31 @@ class TediousPoolWrapper {
 
   private buildConnectionConfig() {
     const server = process.env.SQL_SERVER_HOST || "localhost"
-    const port = parseInt(process.env.SQL_SERVER_PORT || "1433", 10)
     const user = process.env.SQL_SERVER_USER || "sa"
     const password = process.env.SQL_SERVER_PASSWORD || ""
     const database = process.env.SQL_SERVER_DATABASE || "master"
     const instanceName = process.env.SQL_SERVER_INSTANCE || ""
     const encrypt = process.env.SQL_SERVER_ENCRYPT === "true"
     const trustServerCertificate = process.env.SQL_SERVER_TRUST_CERT === "true"
+
+    // Jika instanceName ada, gunakan instanceName (jangan port)
+    // Jika tidak ada instanceName, gunakan port
+    const options: any = {
+      database,
+      encrypt,
+      trustServerCertificate,
+      connectionTimeout: 30000,
+      requestTimeout: 30000,
+    }
+
+    if (instanceName) {
+      console.log("[v0-tedious] Using instance:", instanceName)
+      options.instanceName = instanceName
+    } else {
+      const port = parseInt(process.env.SQL_SERVER_PORT || "1433", 10)
+      console.log("[v0-tedious] Using port:", port)
+      options.port = port
+    }
 
     return {
       server,
@@ -87,16 +105,7 @@ class TediousPoolWrapper {
           password,
         },
       },
-      options: {
-        port,
-        database,
-        instanceName: instanceName || undefined,
-        encrypt,
-        trustServerCertificate,
-        // Kompatibel dengan SQL Server 2012
-        connectionTimeout: 30000,
-        requestTimeout: 30000,
-      },
+      options,
     }
   }
 
