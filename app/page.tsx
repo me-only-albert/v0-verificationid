@@ -97,7 +97,15 @@ export default function Page() {
 
         <footer className="mt-auto flex flex-col items-center gap-1 pt-8 text-center">
           <p className="text-[12px] font-semibold text-foreground">
-            by <span className="text-primary">Dainty Pos</span>
+            by{" "}
+            <a
+              href="https://daintypos.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline transition-all active:opacity-75"
+            >
+              Dainty Pos
+            </a>
           </p>
           <p className="text-[11px] text-muted-foreground">
             &copy; {new Date().getFullYear()} VerifyID &middot; Sistem verifikasi internal
