@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { getPool, sql } from "@/lib/db-tedious"
 import { isValidPhone, normalizePhone } from "@/lib/phone"
+import { DayButton } from "react-day-picker"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 // Konfigurasi nama tabel/kolom (bisa di-override via env)
-const CUSTOMER_TABLE = process.env.CUSTOMER_TABLE || "t5_Customer"
+const CUSTOMER_TABLE = process.env.CUSTOMER_TABLE || "dbo.t5_Customer"
 const CUSTOMER_PHONE_COLUMN = process.env.CUSTOMER_PHONE_COLUMN || "MobilePhone"
 const VERIFICATION_TABLE = process.env.VERIFICATION_TABLE || "t5_Customer_verification_codes"
 const VERIFICATION_PHONE_COLUMN = process.env.VERIFICATION_PHONE_COLUMN || "MobilePhone"
