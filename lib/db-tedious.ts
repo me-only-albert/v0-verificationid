@@ -46,37 +46,62 @@ class TediousPoolWrapper {
 
   async connect(): Promise<this> {
     if (this.connection && this.connection.state?.name === "LoggedIn") {
+      console.log("[v0-tedious] Already connected, reusing connection")
       return this
     }
 
     if (this.connecting) {
+      console.log("[v0-tedious] Connection already in progress, waiting...")
       await this.connecting
       return this
     }
 
     const config = this.buildConnectionConfig()
-    console.log("[v0-tedious] Connecting to SQL Server:", config.server)
+    
+    // Validate required credentials
+    if (!config.authentication.options.userName || !config.authentication.options.password) {
+      const err = new Error("Username dan password wajib diisi! Cek environment variables: ROOT_SQL_SERVER_USER dan ROOT_SQL_SERVER_PASSWORD")
+      console.error("[v0-tedious] Credential validation failed:", err.message)
+      throw err
+    }
+    
+    console.log("[v0-tedious] Connecting to SQL Server:", {
+      server: config.server,
+      database: config.options.database,
+      hasInstanceName: !!config.options.instanceName,
+      hasPort: !!config.options.port,
+      encrypt: config.options.encrypt,
+      trustServerCertificate: config.options.trustServerCertificate,
+      connectionTimeout: config.options.connectionTimeout,
+    })
 
     this.connecting = new Promise((resolve, reject) => {
       const conn = new Connection(config)
 
       conn.on("connect", (err) => {
         if (err) {
-          console.log("[v0-tedious] Connect event failed:", err.message)
-          console.log("[v0-tedious] Error code:", (err as any).code)
+          console.error("[v0-tedious] Connect event failed:", {
+            message: err.message,
+            code: (err as any).code,
+            number: (err as any).number,
+            serverName: (err as any).serverName,
+          })
           this.connection = null
           reject(err)
           return
         }
 
-        console.log("[v0-tedious] Connected to SQL Server successfully")
+        console.log("[v0-tedious] Connected to SQL Server successfully!")
         this.connection = conn
         resolve(conn)
       })
 
       conn.on("error", (err) => {
-        console.log("[v0-tedious] Connection error event:", err.message)
-        console.log("[v0-tedious] Error code:", (err as any).code)
+        console.error("[v0-tedious] Connection error event:", {
+          message: err.message,
+          code: (err as any).code,
+          number: (err as any).number,
+        })
         this.connection = null
         reject(err)
       })
@@ -86,7 +111,7 @@ class TediousPoolWrapper {
         this.connection = null
       })
 
-      console.log("[v0-tedious] Calling conn.connect()...")
+      console.log("[v0-tedious] Initiating conn.connect()...")
       conn.connect()
     })
 
@@ -95,7 +120,17 @@ class TediousPoolWrapper {
     } catch (err) {
       this.connecting = null
       const errMsg = err instanceof Error ? err.message : String(err)
-      console.log("[v0-tedious] Connection failed:", errMsg)
+      console.error("[v0-tedious] Connection failed:", errMsg)
+      
+      // Provide actionable error messages
+      if (errMsg.includes("ELOGIN")) {
+        console.error("[v0-tedious] ℹ️ Login failed - cek username/password di environment variables")
+      } else if (errMsg.includes("ETIMEOUT") || errMsg.includes("timeout")) {
+        console.error("[v0-tedious] ℹ️ Timeout - cek apakah server SQL Server dapat diakses dari jaringan ini")
+      } else if (errMsg.includes("ENOTFOUND")) {
+        console.error("[v0-tedious] ℹ️ Server tidak ditemukan - cek HOST/SERVER di environment variables")
+      }
+      
       throw err
     } finally {
       this.connecting = null
@@ -105,13 +140,13 @@ class TediousPoolWrapper {
   }
 
   private buildConnectionConfig() {
-    const server = this.options?.server || process.env.SQL_SERVER_HOST || "localhost"
-    const user = this.options?.user || process.env.SQL_SERVER_USER || "sa"
-    const password = this.options?.password ?? process.env.SQL_SERVER_PASSWORD ?? ""
-    const database = this.options?.database || process.env.SQL_SERVER_DATABASE || "master"
-    const instanceName = this.options?.instanceName ?? process.env.SQL_SERVER_INSTANCE ?? ""
-    const encrypt = this.options?.encrypt ?? process.env.SQL_SERVER_ENCRYPT === "true"
-    const trustServerCertificate = this.options?.trustServerCertificate ?? process.env.SQL_SERVER_TRUST_CERT === "true"
+    const server = this.options?.server || process.env.ROOT_SQL_SERVER_HOST || process.env.SQL_SERVER_HOST || "localhost"
+    const user = this.options?.user || process.env.ROOT_SQL_SERVER_USER || process.env.SQL_SERVER_USER || "sa"
+    const password = this.options?.password ?? process.env.ROOT_SQL_SERVER_PASSWORD ?? process.env.SQL_SERVER_PASSWORD ?? ""
+    const database = this.options?.database || process.env.ROOT_SQL_SERVER_DATABASE || process.env.SQL_SERVER_DATABASE || "master"
+    const instanceName = this.options?.instanceName ?? process.env.ROOT_SQL_SERVER_INSTANCE ?? process.env.SQL_SERVER_INSTANCE ?? ""
+    const encrypt = this.options?.encrypt ?? (process.env.ROOT_SQL_SERVER_ENCRYPT === "true" || process.env.SQL_SERVER_ENCRYPT === "true")
+    const trustServerCertificate = this.options?.trustServerCertificate ?? (process.env.ROOT_SQL_SERVER_TRUST_CERT === "true" || process.env.SQL_SERVER_TRUST_CERT === "true")
 
     console.log("[v0-tedious] Config:", {
       server,
