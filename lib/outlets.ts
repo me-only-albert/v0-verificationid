@@ -21,7 +21,7 @@ interface MasterKoneksiRow {
 }
 
 const ROOT_SERVER = process.env.ROOT_SQL_SERVER_HOST || "202.83.120.48"
-const ROOT_INSTANCE = process.env.ROOT_SQL_SERVER_INSTANCE || "sqlexpress"
+const ROOT_INSTANCE = process.env.ROOT_SQL_SERVER_INSTANCE || ""
 const ROOT_PORT = process.env.ROOT_SQL_SERVER_PORT || "1433"
 const ROOT_USER = process.env.ROOT_SQL_SERVER_USER || ""
 const ROOT_PASSWORD = process.env.ROOT_SQL_SERVER_PASSWORD || ""
