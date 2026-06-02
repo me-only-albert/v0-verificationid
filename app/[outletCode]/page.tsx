@@ -111,6 +111,11 @@ function OutletLoadError() {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Sistem verifikasi sedang menghubungkan data outlet. Silakan coba muat ulang halaman ini sebentar lagi.
         </p>
+        <div className="mt-4 rounded-lg bg-amber-50 p-3 text-left">
+          <p className="text-xs font-semibold text-amber-900">
+            Catatan teknis: Pastikan environment variables sudah dikonfigurasi di Vercel project settings (Settings {">"} Vars)
+          </p>
+        </div>
         <p className="mt-5 text-[12px] font-semibold text-foreground">
           Supported by{" "}
           <a

@@ -35,8 +35,17 @@ function asString(value: unknown): string {
 }
 
 function rootConnectionOptions(): DbConnectionOptions {
-  if (!ROOT_USER || !ROOT_PASSWORD) {
-    throw new Error("ROOT_SQL_SERVER_USER dan ROOT_SQL_SERVER_PASSWORD wajib diisi untuk membaca master_koneksi.")
+  // Validate that we have the required credentials
+  const hasCredentials = ROOT_USER && ROOT_PASSWORD
+  
+  if (!hasCredentials) {
+    console.error("[db-outlets] Missing database credentials:")
+    console.error(`  ROOT_SQL_SERVER_USER: ${ROOT_USER ? "set" : "NOT SET"}`)
+    console.error(`  ROOT_SQL_SERVER_PASSWORD: ${ROOT_PASSWORD ? "set" : "NOT SET"}`)
+    console.error("[db-outlets] Please add these environment variables in Vercel project settings")
+    throw new Error(
+      `Database credentials not configured. Please set ROOT_SQL_SERVER_USER and ROOT_SQL_SERVER_PASSWORD environment variables in your Vercel project settings (Settings > Vars).`
+    )
   }
 
   return {
