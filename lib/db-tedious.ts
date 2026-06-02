@@ -59,7 +59,15 @@ class TediousPoolWrapper {
     this.connecting = new Promise((resolve, reject) => {
       const conn = new Connection(config)
 
-      conn.on("connect", () => {
+      conn.on("connect", (err) => {
+        if (err) {
+          console.log("[v0-tedious] Connect event failed:", err.message)
+          console.log("[v0-tedious] Error code:", (err as any).code)
+          this.connection = null
+          reject(err)
+          return
+        }
+
         console.log("[v0-tedious] Connected to SQL Server successfully")
         this.connection = conn
         resolve(conn)
@@ -253,6 +261,10 @@ export async function getPool(options?: DbConnectionOptions): Promise<TediousPoo
   const pool = new TediousPoolWrapper(options)
   pools.set(key, pool)
   await pool.connect()
+  if (!pool.connected) {
+    pools.delete(key)
+    throw new Error("Database connection closed immediately after login.")
+  }
   return pool
 }
 

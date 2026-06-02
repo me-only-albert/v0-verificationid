@@ -20,11 +20,11 @@ interface MasterKoneksiRow {
   daintyPass?: unknown
 }
 
-const ROOT_SERVER = process.env.ROOT_SQL_SERVER_HOST || process.env.SQL_SERVER_HOST || "202.83.120.48"
-const ROOT_INSTANCE = process.env.ROOT_SQL_SERVER_INSTANCE || process.env.SQL_SERVER_INSTANCE || "sqlexpress"
-const ROOT_PORT = process.env.ROOT_SQL_SERVER_PORT || process.env.SQL_SERVER_PORT || ""
-const ROOT_USER = process.env.ROOT_SQL_SERVER_USER || process.env.SQL_SERVER_USER || ""
-const ROOT_PASSWORD = process.env.ROOT_SQL_SERVER_PASSWORD || process.env.SQL_SERVER_PASSWORD || ""
+const ROOT_SERVER = process.env.ROOT_SQL_SERVER_HOST || "202.83.120.48"
+const ROOT_INSTANCE = process.env.ROOT_SQL_SERVER_INSTANCE || "sqlexpress"
+const ROOT_PORT = process.env.ROOT_SQL_SERVER_PORT || "1433"
+const ROOT_USER = process.env.ROOT_SQL_SERVER_USER || ""
+const ROOT_PASSWORD = process.env.ROOT_SQL_SERVER_PASSWORD || ""
 const ROOT_DATABASE = process.env.ROOT_SQL_SERVER_DATABASE || "DB_DAINTY_REPORTS"
 const OUTLET_ID = process.env.OUTLET_ID || "mox"
 const CENTRAL_CRM_DATABASE = process.env.CENTRAL_CRM_DATABASE || "DB_DAINTY_CRM"
@@ -35,6 +35,10 @@ function asString(value: unknown): string {
 }
 
 function rootConnectionOptions(): DbConnectionOptions {
+  if (!ROOT_USER || !ROOT_PASSWORD) {
+    throw new Error("ROOT_SQL_SERVER_USER dan ROOT_SQL_SERVER_PASSWORD wajib diisi untuk membaca master_koneksi.")
+  }
+
   return {
     server: ROOT_SERVER,
     user: ROOT_USER,

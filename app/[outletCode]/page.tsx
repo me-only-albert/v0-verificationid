@@ -14,7 +14,14 @@ function formatPhone(phone: string) {
 
 export default async function OutletPage({ params }: OutletPageProps) {
   const { outletCode } = await params
-  const outlet = await getOutletByCode(decodeURIComponent(outletCode))
+  let outlet
+
+  try {
+    outlet = await getOutletByCode(decodeURIComponent(outletCode))
+  } catch (err) {
+    console.error("[verify-page] Failed to load outlet:", err)
+    return <OutletLoadError />
+  }
 
   if (!outlet) {
     notFound()
@@ -88,6 +95,33 @@ export default async function OutletPage({ params }: OutletPageProps) {
           </p>
           <p className="text-[11px] text-muted-foreground">Sistem verifikasi internal</p>
         </footer>
+      </div>
+    </main>
+  )
+}
+
+function OutletLoadError() {
+  return (
+    <main className="relative flex min-h-dvh items-center justify-center bg-background px-5">
+      <div className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 text-center shadow-xl shadow-primary/[0.06]">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+          <ShieldCheck className="size-6" aria-hidden="true" />
+        </div>
+        <h1 className="mt-4 text-xl font-bold text-foreground">Data outlet belum bisa dimuat</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Sistem verifikasi sedang menghubungkan data outlet. Silakan coba muat ulang halaman ini sebentar lagi.
+        </p>
+        <p className="mt-5 text-[12px] font-semibold text-foreground">
+          Supported by{" "}
+          <a
+            href="https://daintypos.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary transition-all hover:underline active:opacity-75"
+          >
+            DaintyPOS
+          </a>
+        </p>
       </div>
     </main>
   )
