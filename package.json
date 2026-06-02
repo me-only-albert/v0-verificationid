@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check-db": "node scripts/check-db-config.js",
+    "test-db": "node scripts/test-db-connection.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
