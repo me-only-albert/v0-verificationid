@@ -16,6 +16,7 @@ export interface DbConnectionOptions {
   database?: string
   instanceName?: string
   port?: number
+  preferPort?: boolean
   encrypt?: boolean
   trustServerCertificate?: boolean
 }
@@ -131,7 +132,7 @@ class TediousPoolWrapper {
       requestTimeout: 30000,
     }
 
-    if (instanceName && !this.options?.port) {
+    if (instanceName && !this.options?.preferPort) {
       console.log("[v0-tedious] Using instance:", instanceName)
       options.instanceName = instanceName
     } else {
@@ -243,6 +244,7 @@ function poolKey(options?: DbConnectionOptions) {
     database: options.database || "",
     instanceName: options.instanceName || "",
     port: options.port || "",
+    preferPort: options.preferPort ?? false,
     encrypt: options.encrypt ?? false,
     trustServerCertificate: options.trustServerCertificate ?? false,
   })

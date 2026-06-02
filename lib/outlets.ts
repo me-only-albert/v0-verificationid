@@ -116,6 +116,7 @@ export async function getCentralCrmConnectionOptions(): Promise<DbConnectionOpti
     database: CENTRAL_CRM_DATABASE,
     instanceName: asString(row.serverSql),
     port: Number.isFinite(port) ? port : undefined,
+    preferPort: Number.isFinite(port),
     encrypt: false,
     trustServerCertificate: true,
   }
