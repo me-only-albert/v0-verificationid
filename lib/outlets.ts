@@ -28,6 +28,7 @@ const ROOT_PASSWORD = process.env.ROOT_SQL_SERVER_PASSWORD || process.env.SQL_SE
 const ROOT_DATABASE = process.env.ROOT_SQL_SERVER_DATABASE || "DB_DAINTY_REPORTS"
 const OUTLET_ID = process.env.OUTLET_ID || "mox"
 const CENTRAL_CRM_DATABASE = process.env.CENTRAL_CRM_DATABASE || "DB_DAINTY_CRM"
+const ALLOW_OUTLET_CODE_LOOKUP = process.env.ALLOW_OUTLET_CODE_LOOKUP === "true"
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim()
@@ -59,18 +60,19 @@ export async function getOutletByCode(code: string): Promise<OutletInfo | null> 
     .request()
     .input("outletId", sql.NVarChar(50), OUTLET_ID)
     .input("code", sql.NVarChar(255), outletCode)
+    .input("allowOutletCode", sql.Bit(), ALLOW_OUTLET_CODE_LOOKUP)
     .query(
       `SELECT TOP 1 outletID, outletName, outletcode, phone
        FROM dbo.master_koneksi
        WHERE outletID = @outletId
          AND ISNULL(isPusat, 0) = 0
          AND (
-           outletcode = @code
+           codeVerifikasi = @code
            OR codeEnkrip = @code
-           OR outletName = @code
+           OR (@allowOutletCode = 1 AND outletcode = @code)
          )
        ORDER BY
-         CASE WHEN codeEnkrip = @code THEN 0 WHEN outletcode = @code THEN 1 ELSE 2 END,
+         CASE WHEN codeVerifikasi = @code THEN 0 WHEN codeEnkrip = @code THEN 1 ELSE 2 END,
          outletName`,
     )
 
