@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CheckCircle2, Copy, Check, RotateCcw, Clock } from "lucide-react"
+import { CheckCircle2, RotateCcw, Clock, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface VerifyResultProps {
   code: string
   phone: string
+  customerName: string
   expiresInMinutes: number
+  whatsappUrl: string
+  outletName: string
   onReset: () => void
 }
 
@@ -19,8 +22,15 @@ function formatPhoneForDisplay(phone: string) {
   return `+62 ${groups[1]}-${groups[2]}-${groups[3]}`
 }
 
-export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyResultProps) {
-  const [copied, setCopied] = useState(false)
+export function VerifyResult({
+  code,
+  phone,
+  customerName,
+  expiresInMinutes,
+  whatsappUrl,
+  outletName,
+  onReset,
+}: VerifyResultProps) {
   const [secondsLeft, setSecondsLeft] = useState(expiresInMinutes * 60)
   const totalSeconds = expiresInMinutes * 60
 
@@ -29,16 +39,6 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
     const t = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000)
     return () => clearInterval(t)
   }, [secondsLeft])
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    } catch {
-      // ignore
-    }
-  }
 
   const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0")
   const ss = (secondsLeft % 60).toString().padStart(2, "0")
@@ -56,12 +56,19 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
           </div>
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground text-balance">
-          Promo Anda Siap Diklaim!
+          Halo, {customerName}.
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground text-pretty">
-          Tunjukkan kode 4 digit di bawah ini ke kasir untuk klaim promo nomor{" "}
-          <span className="font-semibold text-foreground">{formatPhoneForDisplay(phone)}</span>.
+          Sebagai pelanggan setia MOX, Anda berhak menikmati promo spesial di{" "}
+          <span className="font-semibold text-foreground">{outletName}</span>. Kirim kode ini ke WhatsApp outlet
+          untuk menyelesaikan verifikasi.
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-border/70 bg-secondary/40 px-4 py-3 text-[13px]">
+        <p className="text-muted-foreground">Member terverifikasi</p>
+        <p className="mt-0.5 font-bold text-foreground">{customerName}</p>
+        <p className="mt-0.5 text-muted-foreground">{formatPhoneForDisplay(phone)}</p>
       </div>
 
       {/* Code display */}
@@ -122,23 +129,14 @@ export function VerifyResult({ code, phone, expiresInMinutes, onReset }: VerifyR
       {/* Actions */}
       <div className="flex flex-col gap-2.5">
         <Button
-          onClick={copyCode}
+          asChild
           disabled={expired}
-          className={`h-12 rounded-2xl text-[14px] font-semibold transition-all ${
-            copied ? "bg-primary text-primary-foreground" : ""
-          }`}
+          className="h-12 rounded-2xl text-[14px] font-semibold shadow-lg shadow-primary/20"
         >
-          {copied ? (
-            <>
-              <Check className="size-4" aria-hidden="true" />
-              Kode tersalin
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" aria-hidden="true" />
-              Salin kode
-            </>
-          )}
+          <a href={expired ? undefined : whatsappUrl} target="_blank" rel="noopener noreferrer">
+            <Send className="size-4" aria-hidden="true" />
+            Kirim kode ke WhatsApp {outletName}
+          </a>
         </Button>
 
         <Button

@@ -9,6 +9,17 @@ interface RequestWrapper {
   query(sql: string): Promise<QueryResult>
 }
 
+export interface DbConnectionOptions {
+  server?: string
+  user?: string
+  password?: string
+  database?: string
+  instanceName?: string
+  port?: number
+  encrypt?: boolean
+  trustServerCertificate?: boolean
+}
+
 // SQL type mappings untuk kompatibilitas dengan mssql API
 export const sql = {
   NVarChar: (len?: number) => ({ type: TYPES.NVarChar, length: len }),
@@ -25,6 +36,12 @@ export const sql = {
 class TediousPoolWrapper {
   private connection: Connection | null = null
   private connecting: Promise<Connection> | null = null
+  private queryQueue: Promise<unknown> = Promise.resolve()
+  private readonly options?: DbConnectionOptions
+
+  constructor(options?: DbConnectionOptions) {
+    this.options = options
+  }
 
   async connect(): Promise<this> {
     if (this.connection && this.connection.state?.name === "LoggedIn") {
@@ -79,13 +96,13 @@ class TediousPoolWrapper {
   }
 
   private buildConnectionConfig() {
-    const server = process.env.SQL_SERVER_HOST || "localhost"
-    const user = process.env.SQL_SERVER_USER || "sa"
-    const password = process.env.SQL_SERVER_PASSWORD || ""
-    const database = process.env.SQL_SERVER_DATABASE || "master"
-    const instanceName = process.env.SQL_SERVER_INSTANCE || ""
-    const encrypt = process.env.SQL_SERVER_ENCRYPT === "true"
-    const trustServerCertificate = process.env.SQL_SERVER_TRUST_CERT === "true"
+    const server = this.options?.server || process.env.SQL_SERVER_HOST || "localhost"
+    const user = this.options?.user || process.env.SQL_SERVER_USER || "sa"
+    const password = this.options?.password ?? process.env.SQL_SERVER_PASSWORD ?? ""
+    const database = this.options?.database || process.env.SQL_SERVER_DATABASE || "master"
+    const instanceName = this.options?.instanceName ?? process.env.SQL_SERVER_INSTANCE ?? ""
+    const encrypt = this.options?.encrypt ?? process.env.SQL_SERVER_ENCRYPT === "true"
+    const trustServerCertificate = this.options?.trustServerCertificate ?? process.env.SQL_SERVER_TRUST_CERT === "true"
 
     console.log("[v0-tedious] Config:", {
       server,
@@ -106,11 +123,11 @@ class TediousPoolWrapper {
       requestTimeout: 30000,
     }
 
-    if (instanceName) {
+    if (instanceName && !this.options?.port) {
       console.log("[v0-tedious] Using instance:", instanceName)
       options.instanceName = instanceName
     } else {
-      const port = parseInt(process.env.SQL_SERVER_PORT || "1433", 10)
+      const port = this.options?.port ?? parseInt(process.env.SQL_SERVER_PORT || "1433", 10)
       console.log("[v0-tedious] Using port:", port)
       options.port = port
     }
@@ -137,6 +154,11 @@ class TediousPoolWrapper {
     }
 
     const conn = this.connection
+    const runQueued = <T>(task: () => Promise<T>): Promise<T> => {
+      const next = this.queryQueue.then(task, task)
+      this.queryQueue = next.catch(() => undefined)
+      return next
+    }
     const inputs: Map<string, unknown> = new Map()
     const types: Map<string, any> = new Map()
 
@@ -151,7 +173,7 @@ class TediousPoolWrapper {
       },
 
       async query(sql: string): Promise<QueryResult> {
-        return new Promise((resolve, reject) => {
+        return runQueued(() => new Promise((resolve, reject) => {
           const recordset: Record<string, unknown>[] = []
 
           const request = new TediousRequest(sql, (err) => {
@@ -181,7 +203,7 @@ class TediousPoolWrapper {
           })
 
           conn.execSql(request)
-        })
+        }))
       },
     }
 
@@ -202,23 +224,39 @@ class TediousPoolWrapper {
   }
 }
 
-let pool: TediousPoolWrapper | null = null
+const pools = new Map<string, TediousPoolWrapper>()
 
-export async function getPool(): Promise<TediousPoolWrapper> {
-  if (pool && pool.connected) {
+function poolKey(options?: DbConnectionOptions) {
+  if (!options) return "default"
+
+  return JSON.stringify({
+    server: options.server || "",
+    user: options.user || "",
+    database: options.database || "",
+    instanceName: options.instanceName || "",
+    port: options.port || "",
+    encrypt: options.encrypt ?? false,
+    trustServerCertificate: options.trustServerCertificate ?? false,
+  })
+}
+
+export async function getPool(options?: DbConnectionOptions): Promise<TediousPoolWrapper> {
+  const key = poolKey(options)
+  const existing = pools.get(key)
+
+  if (existing && existing.connected) {
     console.log("[v0-tedious] Reusing existing connection pool")
-    return pool
+    return existing
   }
 
   console.log("[v0-tedious] Creating new connection pool")
-  pool = new TediousPoolWrapper()
+  const pool = new TediousPoolWrapper(options)
+  pools.set(key, pool)
   await pool.connect()
   return pool
 }
 
 export async function closePool(): Promise<void> {
-  if (pool) {
-    return pool.close()
-  }
-  return Promise.resolve()
+  await Promise.all(Array.from(pools.values()).map((pool) => pool.close()))
+  pools.clear()
 }

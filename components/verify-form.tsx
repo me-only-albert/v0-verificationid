@@ -7,15 +7,46 @@ import { NotFoundModal } from "@/components/not-found-modal"
 import { VerifyResult } from "@/components/verify-result"
 
 type ApiResponse =
-  | { ok: true; verificationCode: string; expiresInMinutes: number; phone: string }
-  | { ok: false; code: "NOT_FOUND" | "INVALID" | "SERVER_ERROR" | "EXHAUSTED"; message: string }
+  | {
+      ok: true
+      verificationCode: string
+      expiresInMinutes: number
+      phone: string
+      customer: { code: string; name: string; mobilePhone: string }
+      whatsappUrl: string
+      outlet: { name: string; code: string; phone: string }
+    }
+  | {
+      ok: false
+      code:
+        | "NOT_FOUND"
+        | "INVALID"
+        | "SERVER_ERROR"
+        | "EXHAUSTED"
+        | "OUTLET_NOT_FOUND"
+        | "OUTLET_PHONE_EMPTY"
+        | "DB_CONNECTION_ERROR"
+        | "DB_QUERY_ERROR"
+      message: string
+    }
 
-export function VerifyForm() {
+interface VerifyFormProps {
+  outletCode?: string
+}
+
+export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
   const [phone, setPhone] = useState("")
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [showNotFound, setShowNotFound] = useState(false)
-  const [result, setResult] = useState<{ code: string; phone: string; expiresInMinutes: number } | null>(null)
+  const [result, setResult] = useState<{
+    code: string
+    phone: string
+    customerName: string
+    expiresInMinutes: number
+    whatsappUrl: string
+    outletName: string
+  } | null>(null)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.replace(/[^\d]/g, "").slice(0, 15)
@@ -33,13 +64,17 @@ export function VerifyForm() {
       setError("Nomor HP terlalu pendek.")
       return
     }
+    if (!outletCode.trim()) {
+      setError("Silakan scan QR dari outlet terlebih dahulu.")
+      return
+    }
 
     startTransition(async () => {
       try {
         const res = await fetch("/api/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone, outletCode }),
         })
         const data: ApiResponse = await res.json()
 
@@ -47,7 +82,10 @@ export function VerifyForm() {
           setResult({
             code: data.verificationCode,
             phone: data.phone,
+            customerName: data.customer.name,
             expiresInMinutes: data.expiresInMinutes,
+            whatsappUrl: data.whatsappUrl,
+            outletName: data.outlet.name,
           })
           return
         }
@@ -75,7 +113,10 @@ export function VerifyForm() {
       <VerifyResult
         code={result.code}
         phone={result.phone}
+        customerName={result.customerName}
         expiresInMinutes={result.expiresInMinutes}
+        whatsappUrl={result.whatsappUrl}
+        outletName={result.outletName}
         onReset={reset}
       />
     )

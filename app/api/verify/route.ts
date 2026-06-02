@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getPool, sql } from "@/lib/db-tedious"
+import { formatPhoneForWa, getCentralCrmConnectionOptions, getOutletByCode } from "@/lib/outlets"
 import { isValidPhone, normalizePhone } from "@/lib/phone"
 
 export const runtime = "nodejs"
@@ -13,6 +14,9 @@ const VERIFICATION_PHONE_COLUMN = process.env.VERIFICATION_PHONE_COLUMN || "Mobi
 
 const CODE_TTL_MINUTES = 10
 const MAX_GENERATE_ATTEMPTS = 100
+const SAME_PHONE_CODE_COOLDOWN_DAYS = 60
+const TEST_CUSTOMER_PHONE = normalizePhone(process.env.TEST_CUSTOMER_PHONE || "085789850597")
+const TEST_WHATSAPP_PHONE = normalizePhone(process.env.TEST_WHATSAPP_PHONE || "087786577529")
 
 // SQL Server unique-key violation error numbers
 const ERR_UNIQUE_VIOLATION = new Set([2601, 2627])
@@ -31,13 +35,22 @@ function random4Digit(): string {
     .padStart(4, "0")
 }
 
+function asString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim()
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const rawPhone = typeof body?.phone === "string" ? body.phone : ""
+    const outletCode = typeof body?.outletCode === "string" ? body.outletCode.trim() : ""
 
     if (!rawPhone.trim()) {
       return NextResponse.json({ ok: false, code: "INVALID", message: "Nomor HP wajib diisi." }, { status: 400 })
+    }
+
+    if (!outletCode) {
+      return NextResponse.json({ ok: false, code: "INVALID", message: "Kode outlet wajib diisi." }, { status: 400 })
     }
 
     if (!isValidPhone(rawPhone)) {
@@ -48,12 +61,38 @@ export async function POST(request: Request) {
     }
 
     const phone = normalizePhone(rawPhone)
+    const localPhone = phone.startsWith("62") ? `0${phone.slice(2)}` : phone
+    const rawDigits = rawPhone.replace(/[^\d]/g, "")
 
-    console.log("[v0] Attempting to verify phone:", phone)
+    console.log("[v0] Attempting to verify phone:", phone, "outlet:", outletCode)
+
+    const outlet = await getOutletByCode(outletCode)
+    if (!outlet) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "OUTLET_NOT_FOUND",
+          message: "Outlet tidak ditemukan.",
+        },
+        { status: 404 },
+      )
+    }
+
+    if (!outlet.phone) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "OUTLET_PHONE_EMPTY",
+          message: "Nomor WhatsApp outlet belum diatur.",
+        },
+        { status: 422 },
+      )
+    }
 
     let pool
     try {
-      pool = await getPool()
+      const centralCrm = await getCentralCrmConnectionOptions()
+      pool = await getPool(centralCrm)
       console.log("[v0] Database pool connected")
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err)
@@ -81,7 +120,15 @@ export async function POST(request: Request) {
       customerResult = await pool
         .request()
         .input("phone", sql.NVarChar(20), phone)
-        .query(`SELECT TOP 1 1 AS found FROM dbo.${customerTable} WHERE ${phoneCol} = @phone`)
+        .input("localPhone", sql.NVarChar(20), localPhone)
+        .input("rawPhone", sql.NVarChar(20), rawDigits)
+        .query(
+          `SELECT TOP 1 Code, FirstName, ${phoneCol} AS MobilePhone
+           FROM dbo.${customerTable}
+           WHERE REPLACE(REPLACE(REPLACE(REPLACE(${phoneCol}, ' ', ''), '-', ''), '+', ''), '.', '')
+             IN (@phone, @localPhone, @rawPhone)
+           ORDER BY Code`,
+        )
       console.log("[v0] Customer check completed, found:", customerResult.recordset.length > 0)
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err)
@@ -96,6 +143,11 @@ export async function POST(request: Request) {
         { status: 503 },
       )
     }
+
+    const customer = customerResult.recordset[0]
+    const customerName = asString(customer.FirstName) || "Customer"
+    const customerCode = asString(customer.Code)
+    const customerMobilePhone = asString(customer.MobilePhone) || localPhone
 
     if (customerResult.recordset.length === 0) {
       console.log("[v0] Phone not found in database:", phone)
@@ -134,20 +186,59 @@ export async function POST(request: Request) {
           .request()
           .input("phone", sql.NVarChar(20), phone)
           .input("code", sql.Char(4), candidate)
-          .input("ttl", sql.Int, CODE_TTL_MINUTES)
+          .input("ttl", sql.Int(), CODE_TTL_MINUTES)
+          .input("cooldownDays", sql.Int(), SAME_PHONE_CODE_COOLDOWN_DAYS)
           .query(
-            `INSERT INTO dbo.${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
-             VALUES (@phone, @code, DATEADD(MINUTE, @ttl, GETDATE()))`,
+            `BEGIN TRY
+               BEGIN TRANSACTION;
+
+               DECLARE @lockResult INT;
+               EXEC @lockResult = sp_getapplock
+                 @Resource = @phone,
+                 @LockMode = 'Exclusive',
+                 @LockOwner = 'Transaction',
+                 @LockTimeout = 10000;
+
+               IF @lockResult < 0
+               BEGIN
+                 THROW 50001, 'Gagal mengunci proses generate OTP untuk nomor ini.', 1;
+               END
+
+               UPDATE dbo.${verifTable}
+               SET used = 1
+               WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} = @phone
+                 AND used = 0;
+
+               IF EXISTS (
+                 SELECT 1
+                 FROM dbo.${verifTable}
+                 WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} = @phone
+                   AND code = @code
+                   AND created_at >= DATEADD(DAY, -@cooldownDays, GETDATE())
+               )
+               BEGIN
+                 THROW 50002, 'Kode OTP pernah dipakai nomor ini dalam periode cooldown.', 1;
+               END
+
+               INSERT INTO dbo.${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
+               VALUES (@phone, @code, DATEADD(MINUTE, @ttl, GETDATE()));
+
+               COMMIT TRANSACTION;
+             END TRY
+             BEGIN CATCH
+               IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+               THROW;
+             END CATCH`,
           )
         generatedCode = candidate
         console.log("[v0] Code generated successfully on attempt", attempt + 1, "code:", candidate)
         break
       } catch (err: unknown) {
         const number = (err as { number?: number })?.number
-        if (number && ERR_UNIQUE_VIOLATION.has(number)) {
+        if (number && (ERR_UNIQUE_VIOLATION.has(number) || number === 50002)) {
           // Bentrok dengan kode aktif lain → coba random lain.
           lastError = err
-          console.log("[v0] Unique violation on attempt", attempt + 1, ", retrying...")
+          console.log("[v0] OTP code collision on attempt", attempt + 1, ", retrying...")
           continue
         }
         // Non-unique error
@@ -172,12 +263,28 @@ export async function POST(request: Request) {
     }
 
     console.log("[v0] /api/verify success for phone:", phone)
+    const outletPhone = phone === TEST_CUSTOMER_PHONE ? formatPhoneForWa(TEST_WHATSAPP_PHONE) : formatPhoneForWa(outlet.phone)
+    const whatsappMessage = encodeURIComponent(
+      `Halo ${outlet.outletName}, saya ingin klaim promo diskon member.\n\nNama: ${customerName}\nNomor HP: ${phone}\nKode OTP: ${generatedCode}\nOutlet: ${outlet.outletName}\n\nSupported by DaintyPOS (daintypos.com)`,
+    )
+
     return NextResponse.json({
       ok: true,
       code: "OK",
       verificationCode: generatedCode,
       expiresInMinutes: CODE_TTL_MINUTES,
       phone,
+      customer: {
+        code: customerCode,
+        name: customerName,
+        mobilePhone: customerMobilePhone,
+      },
+      outlet: {
+        name: outlet.outletName,
+        code: outlet.outletCode,
+        phone: outletPhone,
+      },
+      whatsappUrl: `https://wa.me/${outletPhone}?text=${whatsappMessage}`,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Terjadi kesalahan."
