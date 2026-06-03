@@ -27,6 +27,8 @@ export default async function OutletPage({ params }: OutletPageProps) {
     notFound()
   }
 
+  const brandName = `${outlet.outletId.toUpperCase()} VerifyID`
+
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -44,7 +46,7 @@ export default async function OutletPage({ params }: OutletPageProps) {
               <ShieldCheck className="size-5" aria-hidden="true" />
             </div>
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold text-foreground">MOX VerifyID</span>
+              <span className="text-sm font-bold text-foreground">{brandName}</span>
               <span className="text-[11px] font-medium text-muted-foreground">Verifikasi Diskon Member</span>
             </div>
           </div>
