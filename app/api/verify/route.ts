@@ -20,6 +20,7 @@ const TEST_WHATSAPP_PHONE = normalizePhone(process.env.TEST_WHATSAPP_PHONE || "0
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
 const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || process.env.OUTLET_ID || "mox"
+const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
 
 // SQL Server unique-key violation error numbers
 const ERR_UNIQUE_VIOLATION = new Set([2601, 2627])
@@ -47,6 +48,17 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const rawPhone = typeof body?.phone === "string" ? body.phone : ""
     const outletCode = typeof body?.outletCode === "string" ? body.outletCode.trim() : ""
+
+    if (REQUIRE_VERIFICATION_API && !VERIFICATION_API_BASE_URL) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "API_CONFIG_ERROR",
+          message: "VERIFICATION_API_BASE_URL wajib diisi di Vercel.",
+        },
+        { status: 500 },
+      )
+    }
 
     if (VERIFICATION_API_BASE_URL) {
       if (!VERIFICATION_API_KEY) {

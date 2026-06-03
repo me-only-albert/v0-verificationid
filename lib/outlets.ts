@@ -32,6 +32,7 @@ const ALLOW_OUTLET_CODE_LOOKUP = process.env.ALLOW_OUTLET_CODE_LOOKUP === "true"
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
 const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || OUTLET_ID
+const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim()
@@ -61,6 +62,10 @@ export function formatPhoneForWa(phone: string) {
 export async function getOutletByCode(code: string): Promise<OutletInfo | null> {
   const outletCode = code.trim()
   if (!outletCode) return null
+
+  if (REQUIRE_VERIFICATION_API && !VERIFICATION_API_BASE_URL) {
+    throw new Error("VERIFICATION_API_BASE_URL wajib diisi di Vercel agar app tidak konek SQL Server langsung.")
+  }
 
   if (VERIFICATION_API_BASE_URL) {
     if (!VERIFICATION_API_KEY) {
