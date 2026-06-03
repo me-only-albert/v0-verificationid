@@ -31,7 +31,6 @@ const CENTRAL_CRM_DATABASE = process.env.CENTRAL_CRM_DATABASE || "DB_DAINTY_CRM"
 const ALLOW_OUTLET_CODE_LOOKUP = process.env.ALLOW_OUTLET_CODE_LOOKUP === "true"
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
-const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || OUTLET_ID
 const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
 
 function asString(value: unknown): string {
@@ -73,7 +72,6 @@ export async function getOutletByCode(code: string): Promise<OutletInfo | null> 
     }
 
     const url = new URL("/outlet", VERIFICATION_API_BASE_URL)
-    url.searchParams.set("client", VERIFICATION_API_CLIENT)
     url.searchParams.set("code", outletCode)
 
     const response = await fetch(url, {
@@ -90,7 +88,7 @@ export async function getOutletByCode(code: string): Promise<OutletInfo | null> 
     }
 
     return {
-      outletId: VERIFICATION_API_CLIENT,
+      outletId: String(data.outlet.outletId || ""),
       outletName: String(data.outlet.name || ""),
       outletCode: String(data.outlet.code || ""),
       phone: formatPhoneForWa(String(data.outlet.phone || "")),

@@ -19,7 +19,6 @@ const TEST_CUSTOMER_PHONE = normalizePhone(process.env.TEST_CUSTOMER_PHONE || "0
 const TEST_WHATSAPP_PHONE = normalizePhone(process.env.TEST_WHATSAPP_PHONE || "087786577529")
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
-const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || process.env.OUTLET_ID || "mox"
 const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
 
 // SQL Server unique-key violation error numbers
@@ -75,7 +74,6 @@ export async function POST(request: Request) {
           "X-API-Key": VERIFICATION_API_KEY,
         },
         body: JSON.stringify({
-          client: VERIFICATION_API_CLIENT,
           outletCode,
           phone: rawPhone,
         }),
