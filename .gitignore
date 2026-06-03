@@ -9,6 +9,7 @@ __v0_jsx-dev-runtime.ts
 # Environment variables
 .env*.local
 .env.example
+api-verifikasi/config.php
 
 # Common ignores
 node_modules

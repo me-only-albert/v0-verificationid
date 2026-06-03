@@ -29,6 +29,9 @@ const ROOT_DATABASE = process.env.ROOT_SQL_SERVER_DATABASE || "DB_DAINTY_REPORTS
 const OUTLET_ID = process.env.OUTLET_ID || "mox"
 const CENTRAL_CRM_DATABASE = process.env.CENTRAL_CRM_DATABASE || "DB_DAINTY_CRM"
 const ALLOW_OUTLET_CODE_LOOKUP = process.env.ALLOW_OUTLET_CODE_LOOKUP === "true"
+const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
+const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
+const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || OUTLET_ID
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim()
@@ -58,6 +61,36 @@ export function formatPhoneForWa(phone: string) {
 export async function getOutletByCode(code: string): Promise<OutletInfo | null> {
   const outletCode = code.trim()
   if (!outletCode) return null
+
+  if (VERIFICATION_API_BASE_URL) {
+    if (!VERIFICATION_API_KEY) {
+      throw new Error("VERIFICATION_API_KEY wajib diisi jika memakai VERIFICATION_API_BASE_URL.")
+    }
+
+    const url = new URL("/outlet", VERIFICATION_API_BASE_URL)
+    url.searchParams.set("client", VERIFICATION_API_CLIENT)
+    url.searchParams.set("code", outletCode)
+
+    const response = await fetch(url, {
+      headers: {
+        "X-API-Key": VERIFICATION_API_KEY,
+      },
+      cache: "no-store",
+    })
+
+    if (response.status === 404) return null
+    const data = await response.json().catch(() => null)
+    if (!response.ok || !data?.ok) {
+      throw new Error(data?.message || "Gagal mengambil data outlet dari API verifikasi.")
+    }
+
+    return {
+      outletId: VERIFICATION_API_CLIENT,
+      outletName: String(data.outlet.name || ""),
+      outletCode: String(data.outlet.code || ""),
+      phone: formatPhoneForWa(String(data.outlet.phone || "")),
+    }
+  }
 
   const pool = await getPool(rootConnectionOptions())
   const result = await pool

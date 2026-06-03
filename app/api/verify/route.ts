@@ -17,6 +17,9 @@ const MAX_GENERATE_ATTEMPTS = 100
 const SAME_PHONE_CODE_COOLDOWN_DAYS = 60
 const TEST_CUSTOMER_PHONE = normalizePhone(process.env.TEST_CUSTOMER_PHONE || "085789850597")
 const TEST_WHATSAPP_PHONE = normalizePhone(process.env.TEST_WHATSAPP_PHONE || "087786577529")
+const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
+const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
+const VERIFICATION_API_CLIENT = process.env.VERIFICATION_API_CLIENT || process.env.OUTLET_ID || "mox"
 
 // SQL Server unique-key violation error numbers
 const ERR_UNIQUE_VIOLATION = new Set([2601, 2627])
@@ -44,6 +47,37 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const rawPhone = typeof body?.phone === "string" ? body.phone : ""
     const outletCode = typeof body?.outletCode === "string" ? body.outletCode.trim() : ""
+
+    if (VERIFICATION_API_BASE_URL) {
+      if (!VERIFICATION_API_KEY) {
+        return NextResponse.json(
+          { ok: false, code: "API_CONFIG_ERROR", message: "VERIFICATION_API_KEY belum diatur." },
+          { status: 500 },
+        )
+      }
+
+      const response = await fetch(new URL("/otp/generate", VERIFICATION_API_BASE_URL), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": VERIFICATION_API_KEY,
+        },
+        body: JSON.stringify({
+          client: VERIFICATION_API_CLIENT,
+          outletCode,
+          phone: rawPhone,
+        }),
+        cache: "no-store",
+      })
+
+      const data = await response.json().catch(() => ({
+        ok: false,
+        code: "API_RESPONSE_ERROR",
+        message: "Response API verifikasi tidak valid.",
+      }))
+
+      return NextResponse.json(data, { status: response.status })
+    }
 
     if (!rawPhone.trim()) {
       return NextResponse.json({ ok: false, code: "INVALID", message: "Nomor HP wajib diisi." }, { status: 400 })
