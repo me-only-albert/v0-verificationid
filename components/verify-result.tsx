@@ -9,6 +9,7 @@ interface VerifyResultProps {
   phone: string
   customerName: string
   expiresInMinutes: number
+  expiresAt: number
   whatsappUrl: string
   outletName: string
   onReset: () => void
@@ -27,18 +28,20 @@ export function VerifyResult({
   phone,
   customerName,
   expiresInMinutes,
+  expiresAt,
   whatsappUrl,
   outletName,
   onReset,
 }: VerifyResultProps) {
-  const [secondsLeft, setSecondsLeft] = useState(expiresInMinutes * 60)
+  const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)))
   const totalSeconds = expiresInMinutes * 60
 
   useEffect(() => {
-    if (secondsLeft <= 0) return
-    const t = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000)
+    const update = () => setSecondsLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)))
+    update()
+    const t = setInterval(update, 1000)
     return () => clearInterval(t)
-  }, [secondsLeft])
+  }, [expiresAt])
 
   const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0")
   const ss = (secondsLeft % 60).toString().padStart(2, "0")

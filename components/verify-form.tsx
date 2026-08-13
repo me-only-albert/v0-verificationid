@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Loader2, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NotFoundModal } from "@/components/not-found-modal"
@@ -34,19 +34,46 @@ interface VerifyFormProps {
   outletCode?: string
 }
 
+type VerifyResultState = {
+  code: string
+  phone: string
+  customerName: string
+  expiresInMinutes: number
+  expiresAt: number
+  whatsappUrl: string
+  outletName: string
+}
+
+function storageKey(outletCode: string) {
+  return `mox-otp:${outletCode}`
+}
+
 export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
   const [phone, setPhone] = useState("")
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [showNotFound, setShowNotFound] = useState(false)
-  const [result, setResult] = useState<{
-    code: string
-    phone: string
-    customerName: string
-    expiresInMinutes: number
-    whatsappUrl: string
-    outletName: string
-  } | null>(null)
+  const [result, setResult] = useState<VerifyResultState | null>(null)
+
+  useEffect(() => {
+    if (!outletCode.trim()) return
+
+    try {
+      const saved = window.localStorage.getItem(storageKey(outletCode))
+      if (!saved) return
+
+      const parsed = JSON.parse(saved) as VerifyResultState
+      if (!parsed?.code || !parsed?.expiresAt || parsed.expiresAt <= Date.now()) {
+        window.localStorage.removeItem(storageKey(outletCode))
+        return
+      }
+
+      setResult(parsed)
+      setPhone(parsed.phone)
+    } catch {
+      window.localStorage.removeItem(storageKey(outletCode))
+    }
+  }, [outletCode])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.replace(/[^\d]/g, "").slice(0, 15)
@@ -79,14 +106,18 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
         const data: ApiResponse = await res.json()
 
         if (data.ok) {
-          setResult({
+          const nextResult: VerifyResultState = {
             code: data.verificationCode,
             phone: data.phone,
             customerName: data.customer.name,
             expiresInMinutes: data.expiresInMinutes,
+            expiresAt: Date.now() + data.expiresInMinutes * 60 * 1000,
             whatsappUrl: data.whatsappUrl,
             outletName: data.outlet.name,
-          })
+          }
+
+          setResult(nextResult)
+          window.localStorage.setItem(storageKey(outletCode), JSON.stringify(nextResult))
           return
         }
 
@@ -106,6 +137,9 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
     setResult(null)
     setPhone("")
     setError(null)
+    if (outletCode.trim()) {
+      window.localStorage.removeItem(storageKey(outletCode))
+    }
   }
 
   if (result) {
@@ -115,6 +149,7 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
         phone={result.phone}
         customerName={result.customerName}
         expiresInMinutes={result.expiresInMinutes}
+        expiresAt={result.expiresAt}
         whatsappUrl={result.whatsappUrl}
         outletName={result.outletName}
         onReset={reset}
@@ -125,10 +160,10 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
   return (
     <>
       <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="phone" className="flex items-center justify-between text-[13px] font-semibold text-foreground">
-            <span>Nomor Handphone</span>
-            <span className="text-[11px] font-medium text-muted-foreground">Wajib diisi</span>
+        <div className="flex flex-col gap-3">
+          <label htmlFor="phone" className="flex items-center justify-between text-[16px] font-bold text-foreground">
+            <span>Nomor HP Member</span>
+            <span className="text-[12px] font-semibold text-muted-foreground">Wajib diisi</span>
           </label>
 
           <div
@@ -142,7 +177,7 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
               <span className="text-base" aria-hidden="true">
                 🇮🇩
               </span>
-              <span className="text-[15px] font-semibold text-foreground">+62</span>
+              <span className="text-[16px] font-bold text-foreground">+62</span>
             </div>
             <input
               id="phone"
@@ -156,23 +191,29 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
               disabled={pending}
               aria-invalid={Boolean(error)}
               aria-describedby={error ? "phone-error" : "phone-hint"}
-              className="h-14 flex-1 bg-transparent px-4 text-[17px] font-semibold tracking-wide text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/50 disabled:opacity-60"
+              className="h-14 flex-1 bg-transparent px-4 text-[19px] font-bold tracking-wide text-foreground outline-none placeholder:font-semibold placeholder:text-muted-foreground/45 disabled:opacity-60"
             />
           </div>
 
           {error ? (
             <p
               id="phone-error"
-              className="flex items-start gap-1.5 text-[13px] font-medium text-destructive"
+              className="flex items-start gap-1.5 text-[14px] font-semibold text-destructive"
             >
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
               {error}
             </p>
           ) : (
-            <p id="phone-hint" className="text-[12px] leading-relaxed text-muted-foreground">
-              Contoh: <span className="font-medium text-foreground">081234567890</span> atau{" "}
-              <span className="font-medium text-foreground">81234567890</span>
-            </p>
+            <div id="phone-hint" className="rounded-2xl border border-accent/35 bg-accent/10 px-3.5 py-3">
+              <p className="text-[14px] font-bold leading-relaxed text-foreground">
+                Isi dengan nomor HP customer yang terdaftar sebagai member.
+              </p>
+              <p className="mt-1 text-[13px] font-semibold leading-relaxed text-muted-foreground">
+                Bukan nomor kasir dan bukan nomor outlet. Contoh:{" "}
+                <span className="text-foreground">081234567890</span> atau{" "}
+                <span className="text-foreground">81234567890</span>.
+              </p>
+            </div>
           )}
         </div>
 
