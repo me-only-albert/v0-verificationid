@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CheckCircle2, RotateCcw, Clock, Send } from "lucide-react"
+import { AlertTriangle, CheckCircle2, RotateCcw, Clock, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface VerifyResultProps {
@@ -136,12 +136,24 @@ export function VerifyResult({
         </div>
       </div>
 
-      <p className="-mt-2 text-center text-[13px] font-semibold leading-relaxed text-destructive">
-        Kode OTP wajib dikirim melalui WhatsApp. Jika tidak dikirim, kode tidak aktif.
-      </p>
+      <div className="-mt-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-center shadow-sm">
+        <div className="flex items-center justify-center gap-2 text-[13px] font-extrabold uppercase tracking-wide text-destructive">
+          <AlertTriangle className="size-4" aria-hidden="true" />
+          Langkah Wajib
+        </div>
+        <p className="mt-1.5 text-[13px] font-semibold leading-relaxed text-destructive">
+          Tekan tombol hijau di bawah ini untuk mengirim kode OTP melalui WhatsApp. Kode tidak aktif jika belum
+          dikirim.
+        </p>
+      </div>
 
       {/* Actions */}
       <div className="flex flex-col gap-2.5">
+        {!expired && (
+          <p className="text-center text-[12px] font-bold uppercase tracking-wide text-primary">
+            Tekan tombol ini untuk mengaktifkan kode
+          </p>
+        )}
         <Button
           asChild
           disabled={expired}
@@ -156,7 +168,7 @@ export function VerifyResult({
             rel="noopener noreferrer"
           >
             <Send className="size-4" aria-hidden="true" />
-            Kirim kode ke WhatsApp {outletName}
+            Wajib Tekan di Sini: Kirim OTP
           </a>
         </Button>
 
