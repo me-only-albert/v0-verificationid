@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CheckCircle2, RotateCcw, Clock, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -34,7 +34,9 @@ export function VerifyResult({
   onReset,
 }: VerifyResultProps) {
   const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)))
+  const whatsappLinkRef = useRef<HTMLAnchorElement>(null)
   const totalSeconds = expiresInMinutes * 60
+  const expired = secondsLeft <= 0
 
   useEffect(() => {
     const update = () => setSecondsLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)))
@@ -43,9 +45,14 @@ export function VerifyResult({
     return () => clearInterval(t)
   }, [expiresAt])
 
+  useEffect(() => {
+    if (!expired) {
+      whatsappLinkRef.current?.focus()
+    }
+  }, [expired])
+
   const mm = Math.floor(secondsLeft / 60).toString().padStart(2, "0")
   const ss = (secondsLeft % 60).toString().padStart(2, "0")
-  const expired = secondsLeft <= 0
   const progress = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100))
 
   return (
@@ -138,9 +145,16 @@ export function VerifyResult({
         <Button
           asChild
           disabled={expired}
-          className="h-12 rounded-2xl text-[14px] font-semibold shadow-lg shadow-primary/20"
+          className={`h-12 rounded-2xl text-[14px] font-semibold shadow-lg shadow-primary/20 ${
+            expired ? "" : "wa-cta-glow relative isolate overflow-hidden focus-visible:ring-4 focus-visible:ring-primary/45"
+          }`}
         >
-          <a href={expired ? undefined : whatsappUrl} target="_blank" rel="noopener noreferrer">
+          <a
+            ref={whatsappLinkRef}
+            href={expired ? undefined : whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Send className="size-4" aria-hidden="true" />
             Kirim kode ke WhatsApp {outletName}
           </a>
