@@ -129,6 +129,10 @@ export function VerifyResult({
         </div>
       </div>
 
+      <p className="-mt-2 text-center text-[13px] font-semibold leading-relaxed text-destructive">
+        Kode OTP wajib dikirim melalui WhatsApp. Jika tidak dikirim, kode tidak aktif.
+      </p>
+
       {/* Actions */}
       <div className="flex flex-col gap-2.5">
         <Button

@@ -188,11 +188,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const customer = customerResult.recordset[0]
-    const customerName = asString(customer.FirstName) || "Customer"
-    const customerCode = asString(customer.Code)
-    const customerMobilePhone = asString(customer.MobilePhone) || localPhone
-
     if (customerResult.recordset.length === 0) {
       console.log("[v0] Phone not found in database:", phone)
       return NextResponse.json(
@@ -204,6 +199,13 @@ export async function POST(request: Request) {
         { status: 404 },
       )
     }
+
+    const customer = customerResult.recordset[0]
+    const customerName = asString(customer.FirstName) || "Customer"
+    const customerCode = asString(customer.Code)
+    const customerMobilePhone = asString(customer.MobilePhone) || localPhone
+    const otpPhone = customerMobilePhone
+    const otpPhoneNormalized = normalizePhone(otpPhone)
 
     // 2. Cleanup: tandai kode yang sudah expired sebagai used,
     //    sehingga "slot" kodenya bisa dipakai ulang.
@@ -229,6 +231,10 @@ export async function POST(request: Request) {
         await pool
           .request()
           .input("phone", sql.NVarChar(20), phone)
+          .input("otpPhone", sql.NVarChar(20), otpPhone)
+          .input("otpPhoneNormalized", sql.NVarChar(20), otpPhoneNormalized)
+          .input("localPhone", sql.NVarChar(20), localPhone)
+          .input("rawPhone", sql.NVarChar(20), rawDigits)
           .input("code", sql.Char(4), candidate)
           .input("ttl", sql.Int(), CODE_TTL_MINUTES)
           .input("cooldownDays", sql.Int(), SAME_PHONE_CODE_COOLDOWN_DAYS)
@@ -238,7 +244,7 @@ export async function POST(request: Request) {
 
                DECLARE @lockResult INT;
                EXEC @lockResult = sp_getapplock
-                 @Resource = @phone,
+                 @Resource = @otpPhoneNormalized,
                  @LockMode = 'Exclusive',
                  @LockOwner = 'Transaction',
                  @LockTimeout = 10000;
@@ -250,13 +256,13 @@ export async function POST(request: Request) {
 
                UPDATE dbo.${verifTable}
                SET used = 1
-               WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} = @phone
+               WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} IN (@otpPhone, @otpPhoneNormalized, @phone, @localPhone, @rawPhone)
                  AND used = 0;
 
                IF EXISTS (
                  SELECT 1
                  FROM dbo.${verifTable}
-                 WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} = @phone
+                 WHERE ${safeIdent(VERIFICATION_PHONE_COLUMN)} IN (@otpPhone, @otpPhoneNormalized, @phone, @localPhone, @rawPhone)
                    AND code = @code
                    AND created_at >= DATEADD(DAY, -@cooldownDays, GETDATE())
                )
@@ -265,7 +271,7 @@ export async function POST(request: Request) {
                END
 
                INSERT INTO dbo.${verifTable} (${safeIdent(VERIFICATION_PHONE_COLUMN)}, code, expires_at)
-               VALUES (@phone, @code, DATEADD(MINUTE, @ttl, GETDATE()));
+               VALUES (@otpPhone, @code, DATEADD(MINUTE, @ttl, GETDATE()));
 
                COMMIT TRANSACTION;
              END TRY
@@ -306,10 +312,10 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log("[v0] /api/verify success for phone:", phone)
+    console.log("[v0] /api/verify success for phone:", otpPhone)
     const outletPhone = phone === TEST_CUSTOMER_PHONE ? formatPhoneForWa(TEST_WHATSAPP_PHONE) : formatPhoneForWa(outlet.phone)
     const whatsappMessage = encodeURIComponent(
-      `Halo ${outlet.outletName}, saya ingin klaim promo diskon member.\n\nNama: ${customerName}\nNomor HP: ${phone}\nKode OTP: ${generatedCode}\nOutlet: ${outlet.outletName}\n\nSupported by DaintyPOS (daintypos.com)`,
+      `Halo ${outlet.outletName}, saya ingin klaim promo diskon member.\n\nNama: ${customerName}\nNomor HP: ${otpPhone}\nKode OTP: ${generatedCode}\nOutlet: ${outlet.outletName}\n\nSupported by DaintyPOS (daintypos.com)`,
     )
 
     return NextResponse.json({
@@ -317,7 +323,7 @@ export async function POST(request: Request) {
       code: "OK",
       verificationCode: generatedCode,
       expiresInMinutes: CODE_TTL_MINUTES,
-      phone,
+      phone: otpPhone,
       customer: {
         code: customerCode,
         name: customerName,

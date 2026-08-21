@@ -304,6 +304,19 @@ function handle_generate(array $config): void
         throw new ApiError(404, 'NOT_FOUND', 'Nomor HP tidak terdaftar.');
     }
 
+    $otpPhone = trim((string)($customer['MobilePhone'] ?? '')) ?: $localPhone;
+    $otpPhoneNormalized = normalize_phone($otpPhone);
+    $phoneCandidates = array_values(array_unique(array_filter([
+        $otpPhone,
+        $otpPhoneNormalized,
+        $phone,
+        $localPhone,
+        $rawDigits,
+    ])));
+    while (count($phoneCandidates) < 5) {
+        $phoneCandidates[] = $otpPhone;
+    }
+
     $central->exec("UPDATE dbo.{$verificationTable} SET used = 1 WHERE used = 0 AND expires_at < GETDATE()");
 
     $generated = null;
@@ -327,22 +340,36 @@ function handle_generate(array $config): void
                    RAISERROR('Gagal mengunci proses generate OTP.', 16, 1);
                  END"
             );
-            $stmt->execute([$phone]);
+            $stmt->execute([$otpPhoneNormalized]);
 
-            $stmt = $central->prepare("UPDATE dbo.{$verificationTable} SET used = 1 WHERE {$verificationPhoneCol} = CAST(? AS nvarchar(40)) AND used = 0");
-            $stmt->execute([$phone]);
+            $stmt = $central->prepare(
+                "UPDATE dbo.{$verificationTable}
+                 SET used = 1
+                 WHERE {$verificationPhoneCol} IN (
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40))
+                 )
+                   AND used = 0"
+            );
+            $stmt->execute($phoneCandidates);
 
             $stmt = $central->prepare(
                 "SELECT TOP 1 1 AS found
                  FROM dbo.{$verificationTable}
-                 WHERE {$verificationPhoneCol} = CAST(? AS nvarchar(40))
+                 WHERE {$verificationPhoneCol} IN (
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40)),
+                   CAST(? AS nvarchar(40))
+                 )
                    AND code = CAST(? AS char(4))
                    AND created_at >= DATEADD(DAY, -{$cooldownDays}, GETDATE())"
             );
-            $stmt->execute([
-                $phone,
-                $candidate,
-            ]);
+            $stmt->execute([...$phoneCandidates, $candidate]);
             if ($stmt->fetch()) {
                 $central->rollBack();
                 continue;
@@ -353,7 +380,7 @@ function handle_generate(array $config): void
                  VALUES (CAST(? AS nvarchar(40)), CAST(? AS char(4)), DATEADD(MINUTE, {$ttl}, GETDATE()))"
             );
             $stmt->execute([
-                $phone,
+                $otpPhone,
                 $candidate,
             ]);
 
@@ -386,7 +413,7 @@ function handle_generate(array $config): void
     //     : $outlet['phone'];
     $message = "Halo {$outlet['name']}, saya ingin klaim promo diskon member.\n\n"
         . "Nama: {$customerName}\n"
-        . "Nomor HP: {$phone}\n"
+        . "Nomor HP: {$otpPhone}\n"
         . "Kode OTP: {$generated}\n"
         . "Outlet: {$outlet['name']}\n\n"
         . "Supported by DaintyPOS (daintypos.com)";
@@ -395,11 +422,11 @@ function handle_generate(array $config): void
         'ok' => true,
         'verificationCode' => $generated,
         'expiresInMinutes' => $ttl,
-        'phone' => $phone,
+        'phone' => $otpPhone,
         'customer' => [
             'code' => trim((string)($customer['Code'] ?? '')),
             'name' => $customerName,
-            'mobilePhone' => trim((string)($customer['MobilePhone'] ?? $localPhone)),
+            'mobilePhone' => $otpPhone,
         ],
         'outlet' => [
             'outletId' => $outlet['outletId'],

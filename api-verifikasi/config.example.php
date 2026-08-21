@@ -23,8 +23,8 @@ return [
     ],
     'client_overrides' => [
         'mox' => [
-            'test_customer_phone' => '085789850597',
-            'test_whatsapp_phone' => '087786577529',
+            // 'test_customer_phone' => '085789850597',
+            // 'test_whatsapp_phone' => '087786577529',
         ],
     ],
 ];
