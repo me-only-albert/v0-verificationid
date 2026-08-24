@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { Loader2, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NotFoundModal } from "@/components/not-found-modal"
-import { VerifyResult } from "@/components/verify-result"
 
 type ApiResponse =
   | {
@@ -34,46 +33,11 @@ interface VerifyFormProps {
   outletCode?: string
 }
 
-type VerifyResultState = {
-  code: string
-  phone: string
-  customerName: string
-  expiresInMinutes: number
-  expiresAt: number
-  whatsappUrl: string
-  outletName: string
-}
-
-function storageKey(outletCode: string) {
-  return `mox-otp:${outletCode}`
-}
-
 export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
   const [phone, setPhone] = useState("")
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [showNotFound, setShowNotFound] = useState(false)
-  const [result, setResult] = useState<VerifyResultState | null>(null)
-
-  useEffect(() => {
-    if (!outletCode.trim()) return
-
-    try {
-      const saved = window.localStorage.getItem(storageKey(outletCode))
-      if (!saved) return
-
-      const parsed = JSON.parse(saved) as VerifyResultState
-      if (!parsed?.code || !parsed?.expiresAt || parsed.expiresAt <= Date.now()) {
-        window.localStorage.removeItem(storageKey(outletCode))
-        return
-      }
-
-      setResult(parsed)
-      setPhone(parsed.phone)
-    } catch {
-      window.localStorage.removeItem(storageKey(outletCode))
-    }
-  }, [outletCode])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.replace(/[^\d]/g, "").slice(0, 15)
@@ -106,18 +70,7 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
         const data: ApiResponse = await res.json()
 
         if (data.ok) {
-          const nextResult: VerifyResultState = {
-            code: data.verificationCode,
-            phone: data.phone,
-            customerName: data.customer.name,
-            expiresInMinutes: data.expiresInMinutes,
-            expiresAt: Date.now() + data.expiresInMinutes * 60 * 1000,
-            whatsappUrl: data.whatsappUrl,
-            outletName: data.outlet.name,
-          }
-
-          setResult(nextResult)
-          window.localStorage.setItem(storageKey(outletCode), JSON.stringify(nextResult))
+          window.location.href = data.whatsappUrl
           return
         }
 
@@ -131,30 +84,6 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
         setError("Tidak bisa terhubung ke server. Periksa koneksi internet Anda.")
       }
     })
-  }
-
-  function reset() {
-    setResult(null)
-    setPhone("")
-    setError(null)
-    if (outletCode.trim()) {
-      window.localStorage.removeItem(storageKey(outletCode))
-    }
-  }
-
-  if (result) {
-    return (
-      <VerifyResult
-        code={result.code}
-        phone={result.phone}
-        customerName={result.customerName}
-        expiresInMinutes={result.expiresInMinutes}
-        expiresAt={result.expiresAt}
-        whatsappUrl={result.whatsappUrl}
-        outletName={result.outletName}
-        onReset={reset}
-      />
-    )
   }
 
   return (
@@ -226,11 +155,11 @@ export function VerifyForm({ outletCode = "" }: VerifyFormProps) {
             {pending ? (
               <>
                 <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                Memeriksa nomor...
+                Membuat OTP dan membuka WhatsApp...
               </>
             ) : (
               <>
-                Verifikasi Sekarang
+                Kirim OTP via WhatsApp
                 <ArrowRight
                   className="size-5 transition-transform group-hover:translate-x-0.5"
                   aria-hidden="true"
