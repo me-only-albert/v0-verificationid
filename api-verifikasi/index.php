@@ -14,7 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header('Access-Control-Allow-Origin: *');
 
-const TEMP_WHATSAPP_PHONE = '085111370016';
+const TEMP_WHATSAPP_PHONE = '085172216282';
+// Nomor lama, aktifkan lagi kalau blokir sementara sudah selesai:
+// const TEMP_WHATSAPP_PHONE = '085111370016';
 
 final class ApiError extends RuntimeException
 {

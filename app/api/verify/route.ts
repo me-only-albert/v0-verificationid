@@ -15,8 +15,9 @@ const VERIFICATION_PHONE_COLUMN = process.env.VERIFICATION_PHONE_COLUMN || "Mobi
 const CODE_TTL_MINUTES = 10
 const MAX_GENERATE_ATTEMPTS = 100
 const SAME_PHONE_CODE_COOLDOWN_DAYS = 60
-const TEST_CUSTOMER_PHONE = normalizePhone(process.env.TEST_CUSTOMER_PHONE || "085789850597")
-const TEST_WHATSAPP_PHONE = normalizePhone(process.env.TEST_WHATSAPP_PHONE || "087786577529")
+const TEMP_WHATSAPP_PHONE = formatPhoneForWa("085172216282")
+// Nomor lama, aktifkan lagi kalau blokir sementara sudah selesai:
+// const TEMP_WHATSAPP_PHONE = formatPhoneForWa("085111370016")
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
 const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
@@ -313,7 +314,7 @@ export async function POST(request: Request) {
     }
 
     console.log("[v0] /api/verify success for phone:", otpPhone)
-    const outletPhone = phone === TEST_CUSTOMER_PHONE ? formatPhoneForWa(TEST_WHATSAPP_PHONE) : formatPhoneForWa(outlet.phone)
+    const outletPhone = TEMP_WHATSAPP_PHONE
     const whatsappMessage = encodeURIComponent(
       `Halo ${outlet.outletName}, saya ingin klaim promo diskon member.\n\nNama: ${customerName}\nNomor HP: ${otpPhone}\nKode OTP: ${generatedCode}\nOutlet: ${outlet.outletName}\n\nSupported by DaintyPOS (daintypos.com)`,
     )
