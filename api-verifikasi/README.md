@@ -6,10 +6,11 @@ API PHP murni untuk verifikasi promo/member. API ini sebaiknya di-host di server
 
 1. Copy `config.example.php` menjadi `config.php`.
 2. Isi password dan API key di `config.php`.
-3. Pastikan PHP punya salah satu driver:
+3. Isi `nomor_wa` di `DB_DAINTY_REPORTS.daintyuser.global_variable`; nomor ini menjadi tujuan `wa.me`.
+4. Pastikan PHP punya salah satu driver:
    - `sqlsrv`, atau
    - `pdo_odbc` dengan ODBC driver SQL Server.
-4. Arahkan domain `apiverifikasi.daintypos.com` ke folder `api-verifikasi`.
+5. Arahkan domain `apiverifikasi.daintypos.com` ke folder `api-verifikasi`.
 
 ## Endpoint
 
@@ -35,3 +36,4 @@ Body `POST /otp/generate`:
 ```
 
 `outletID`/client diambil otomatis dari `master_koneksi` berdasarkan `codeVerifikasi`, lalu API mencari koneksi pusat dari baris `isPusat = 1` untuk `outletID` tersebut.
+Tujuan WhatsApp diambil dari `global_variable.nomor_wa`, bukan dari nomor outlet.

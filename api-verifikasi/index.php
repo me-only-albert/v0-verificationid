@@ -14,10 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header('Access-Control-Allow-Origin: *');
 
-const TEMP_WHATSAPP_PHONE = '085172216282';
-// Nomor lama, aktifkan lagi kalau blokir sementara sudah selesai:
-// const TEMP_WHATSAPP_PHONE = '085111370016';
-
 final class ApiError extends RuntimeException
 {
     public function __construct(
@@ -95,6 +91,11 @@ function safe_ident(string $name): string
     }
 
     return '[' . $name . ']';
+}
+
+function qualified_table(string $schema, string $table): string
+{
+    return safe_ident($schema) . '.' . safe_ident($table);
 }
 
 function normalize_phone(string $input): string
@@ -192,6 +193,29 @@ function find_outlet(PDO $pdo, string $code): ?array
     ];
 }
 
+function global_whatsapp_phone(PDO $pdo, array $config): string
+{
+    $defaults = $config['defaults'] ?? [];
+    $schema = (string)($defaults['global_variable_schema'] ?? 'daintyuser');
+    $table = (string)($defaults['global_variable_table'] ?? 'global_variable');
+    $column = safe_ident((string)($defaults['global_whatsapp_column'] ?? 'nomor_wa'));
+    $qualifiedTable = qualified_table($schema, $table);
+
+    $stmt = $pdo->query(
+        "SELECT TOP 1 {$column} AS nomorWa
+         FROM {$qualifiedTable}
+         WHERE NULLIF(LTRIM(RTRIM(CAST({$column} AS nvarchar(255)))), '') IS NOT NULL"
+    );
+    $row = $stmt->fetch();
+    $targetWa = $row ? wa_phone((string)($row['nomorWa'] ?? '')) : '';
+
+    if ($targetWa === '') {
+        throw new ApiError(422, 'GLOBAL_WHATSAPP_EMPTY', 'Nomor WhatsApp tujuan belum diatur di global_variable.nomor_wa.');
+    }
+
+    return $targetWa;
+}
+
 function central_pdo(PDO $registry, array $client): PDO
 {
     $stmt = $registry->prepare(
@@ -268,11 +292,7 @@ function handle_generate(array $config): void
     if (!$outlet) {
         throw new ApiError(404, 'OUTLET_NOT_FOUND', 'Outlet tidak ditemukan.');
     }
-    // Sementara semua pesan verifikasi diarahkan ke nomor pusat/test.
-    // Balikkan blok ini kalau nomor WhatsApp outlet sudah dipakai lagi.
-    // if ($outlet['phone'] === '') {
-    //     throw new ApiError(422, 'OUTLET_PHONE_EMPTY', 'Nomor WhatsApp outlet belum diatur.');
-    // }
+    $targetWa = global_whatsapp_phone($registry, $config);
 
     $client = client_config($config, $outlet['outletId']);
 
@@ -407,12 +427,6 @@ function handle_generate(array $config): void
     }
 
     $customerName = trim((string)($customer['FirstName'] ?? '')) ?: 'Customer';
-    // Sementara pakai satu nomor tujuan untuk semua outlet.
-    // Nanti kalau POS sudah siap, balikin ke logic outlet/test customer di bawah.
-    $targetWa = wa_phone(TEMP_WHATSAPP_PHONE);
-    // $targetWa = $phone === normalize_phone((string)($client['test_customer_phone'] ?? ''))
-    //     ? wa_phone((string)($client['test_whatsapp_phone'] ?? $outlet['phone']))
-    //     : $outlet['phone'];
     $message = "Halo {$outlet['name']}, saya ingin klaim promo diskon member.\n\n"
         . "Nama: {$customerName}\n"
         . "Nomor HP: {$otpPhone}\n"
