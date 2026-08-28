@@ -28,6 +28,9 @@ const ROOT_PASSWORD = process.env.ROOT_SQL_SERVER_PASSWORD || ""
 const ROOT_DATABASE = process.env.ROOT_SQL_SERVER_DATABASE || "DB_DAINTY_REPORTS"
 const OUTLET_ID = process.env.OUTLET_ID || "mox"
 const CENTRAL_CRM_DATABASE = process.env.CENTRAL_CRM_DATABASE || "DB_DAINTY_CRM"
+const GLOBAL_VARIABLE_SCHEMA = process.env.GLOBAL_VARIABLE_SCHEMA || "daintyuser"
+const GLOBAL_VARIABLE_TABLE = process.env.GLOBAL_VARIABLE_TABLE || "global_variable"
+const GLOBAL_WHATSAPP_COLUMN = process.env.GLOBAL_WHATSAPP_COLUMN || "nomor_wa"
 const ALLOW_OUTLET_CODE_LOOKUP = process.env.ALLOW_OUTLET_CODE_LOOKUP === "true"
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
@@ -35,6 +38,13 @@ const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true"
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim()
+}
+
+function safeIdent(name: string) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    throw new Error(`Identifier tidak valid: ${name}`)
+  }
+  return `[${name}]`
 }
 
 function rootConnectionOptions(): DbConnectionOptions {
@@ -56,6 +66,26 @@ function rootConnectionOptions(): DbConnectionOptions {
 
 export function formatPhoneForWa(phone: string) {
   return normalizePhone(phone).replace(/[^\d]/g, "")
+}
+
+export async function getGlobalWhatsappPhone(): Promise<string> {
+  const pool = await getPool(rootConnectionOptions())
+  const schema = safeIdent(GLOBAL_VARIABLE_SCHEMA)
+  const table = safeIdent(GLOBAL_VARIABLE_TABLE)
+  const column = safeIdent(GLOBAL_WHATSAPP_COLUMN)
+
+  const result = await pool.request().query(
+    `SELECT TOP 1 ${column} AS nomorWa
+     FROM ${schema}.${table}
+     WHERE NULLIF(LTRIM(RTRIM(CAST(${column} AS nvarchar(255)))), '') IS NOT NULL`,
+  )
+
+  const targetWa = formatPhoneForWa(asString(result.recordset[0]?.nomorWa))
+  if (!targetWa) {
+    throw new Error("Nomor WhatsApp tujuan belum diatur di global_variable.nomor_wa.")
+  }
+
+  return targetWa
 }
 
 export async function getOutletByCode(code: string): Promise<OutletInfo | null> {

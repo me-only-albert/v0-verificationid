@@ -24,6 +24,7 @@ type ApiResponse =
         | "EXHAUSTED"
         | "OUTLET_NOT_FOUND"
         | "OUTLET_PHONE_EMPTY"
+        | "GLOBAL_WHATSAPP_EMPTY"
         | "DB_CONNECTION_ERROR"
         | "DB_QUERY_ERROR"
       message: string

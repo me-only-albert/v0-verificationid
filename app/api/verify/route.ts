@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getPool, sql } from "@/lib/db-tedious"
-import { formatPhoneForWa, getCentralCrmConnectionOptions, getOutletByCode } from "@/lib/outlets"
+import { getCentralCrmConnectionOptions, getGlobalWhatsappPhone, getOutletByCode } from "@/lib/outlets"
 import { isValidPhone, normalizePhone } from "@/lib/phone"
 
 export const runtime = "nodejs"
@@ -15,9 +15,6 @@ const VERIFICATION_PHONE_COLUMN = process.env.VERIFICATION_PHONE_COLUMN || "Mobi
 const CODE_TTL_MINUTES = 10
 const MAX_GENERATE_ATTEMPTS = 100
 const SAME_PHONE_CODE_COOLDOWN_DAYS = 60
-const TEMP_WHATSAPP_PHONE = formatPhoneForWa("085172216282")
-// Nomor lama, aktifkan lagi kalau blokir sementara sudah selesai:
-// const TEMP_WHATSAPP_PHONE = formatPhoneForWa("085111370016")
 const VERIFICATION_API_BASE_URL = process.env.VERIFICATION_API_BASE_URL || ""
 const VERIFICATION_API_KEY = process.env.VERIFICATION_API_KEY || ""
 const REQUIRE_VERIFICATION_API = process.env.REQUIRE_VERIFICATION_API === "true" || process.env.VERCEL === "1"
@@ -120,17 +117,6 @@ export async function POST(request: Request) {
           message: "Outlet tidak ditemukan.",
         },
         { status: 404 },
-      )
-    }
-
-    if (!outlet.phone) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "OUTLET_PHONE_EMPTY",
-          message: "Nomor WhatsApp outlet belum diatur.",
-        },
-        { status: 422 },
       )
     }
 
@@ -314,7 +300,20 @@ export async function POST(request: Request) {
     }
 
     console.log("[v0] /api/verify success for phone:", otpPhone)
-    const outletPhone = TEMP_WHATSAPP_PHONE
+    let outletPhone = ""
+    try {
+      outletPhone = await getGlobalWhatsappPhone()
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "GLOBAL_WHATSAPP_EMPTY",
+          message: errMsg || "Nomor WhatsApp tujuan belum diatur di global_variable.nomor_wa.",
+        },
+        { status: 422 },
+      )
+    }
     const whatsappMessage = encodeURIComponent(
       `Halo ${outlet.outletName}, saya ingin klaim promo diskon member.\n\nNama: ${customerName}\nNomor HP: ${otpPhone}\nKode OTP: ${generatedCode}\nOutlet: ${outlet.outletName}\n\nSupported by DaintyPOS (daintypos.com)`,
     )
